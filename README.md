@@ -38,11 +38,12 @@ It is designed for:
 
 ## Core Workflow (3 Layers)
 
-| Layer    | Purpose                                                           |
-| -------- | ----------------------------------------------------------------- |
-| Inputs   | Configure provider, model, prompt, system instruction, parameters |
-| Outputs  | Compare responses side-by-side                                    |
-| Analyzer | Inspect tokens, cost, latency, context pressure                   |
+| Layer                     | Purpose                                                           |
+| --------                  | ----------------------------------------------------------------- |
+| Inputs                    | Configure provider, model, prompt, system instruction, parameters |
+| Outputs                   | Compare responses side-by-side                                    |
+| Analyzer                  | Inspect tokens, cost, latency, and context pressure               |
+| Difference Explanation    | Understand behavior difference, likely cause, and decision note   |
 
 ---
 
@@ -88,7 +89,8 @@ The simulator demonstrates:
 * input configuration (multi-provider)
 * execution pipeline (visual flow)
 * side-by-side outputs
-* analyzer metrics (tokens, cost, latency, context)
+* analyzer metrics: tokens, cost, latency, context pressure
+* difference explanation: behavior difference, likely cause, decision note
 
 ---
 
