@@ -1,0 +1,6 @@
+{
+  "runs": [
+    { "provider": "openai", "model": "gpt-5.1-mini" },
+    { "provider": "anthropic", "model": "claude-sonnet-4-5" }
+  ]
+}
