@@ -1,3 +1,7 @@
+![Status](https://img.shields.io/badge/status-MVP-blue)
+![Demo](https://img.shields.io/badge/demo-live-green)
+![License](https://img.shields.io/badge/license-MIT-black)
+
 # llm-lab-mvp
 
 **A lightweight LLM experimentation workspace for comparing prompts, models, token usage, cost, and context behavior across providers.**
