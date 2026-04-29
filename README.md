@@ -11,11 +11,9 @@
 
 ---
 
-## 🚀 Live Simulator
+## Try the product experience
 
-Try the product experience:
-
-👉 https://davedepo.github.io/llm-lab-mvp/
+👉 [Launch the live simulator](https://davedepo.github.io/llm-lab-mvp/)
 
 ---
 
