@@ -12,13 +12,13 @@
 
 Try the product experience:
 
-👉 https://YOUR_USERNAME.github.io/llm-lab-mvp/
+👉 https://davedepo.github.io/llm-lab-mvp/
 
 ---
 
 ## 🖼 Preview
 
-*Add simulator screenshot here (from your HTML UI)*
+![llm-lab preview](assets/llm-lab-preview.png)
 
 ---
 
