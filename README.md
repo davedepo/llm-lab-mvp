@@ -1,6 +1,5 @@
 ![Status](https://img.shields.io/badge/status-MVP-blue)
 ![Demo](https://img.shields.io/badge/demo-live-green)
-![License](https://img.shields.io/badge/license-MIT-black)
 
 # llm-lab-mvp
 
@@ -8,7 +7,7 @@
 
 > Public release: simulator + product architecture
 
-> Full app code: available on request / in progress
+> Status: Demo and architecture available; implementation in progress
 
 ---
 
