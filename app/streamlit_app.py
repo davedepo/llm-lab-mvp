@@ -72,6 +72,24 @@ if st.button("Run experiment", type="primary"):
             detail_cols[0].metric("Approx. context pressure", context_pressure_value)
             detail_cols[1].metric("Est. cost", cost_value)
             st.caption("Token, context pressure, and cost values are approximate estimates.")
+
+            st.subheader("Run summary")
+            st.markdown(
+                f"""
+| Field | Value |
+| --- | --- |
+| Provider | {provider} |
+| Model | {model} |
+| Temperature | {temperature:.1f} |
+| Max output tokens | {max_output_tokens} |
+| Approx. input tokens | {result.approximate_input_tokens} |
+| Approx. output tokens | {result.approximate_output_tokens} |
+| Approx. total tokens | {result.approximate_total_tokens} |
+| Approx. estimated cost | {cost_value} |
+| Latency | {result.latency_seconds:.2f}s |
+| Approx. context pressure | {context_pressure_value} |
+"""
+            )
         except RuntimeError as error:
             st.error(str(error))
         except Exception as error:
