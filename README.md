@@ -97,6 +97,8 @@ The simulator demonstrates:
 
 ## Run Streamlit locally
 
+OpenAI is the first supported real provider in the Streamlit app. Anthropic remains a placeholder.
+
 ```bash
 python -m venv .venv
 source .venv/bin/activate
