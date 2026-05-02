@@ -95,6 +95,18 @@ The simulator demonstrates:
 
 ---
 
+## Run Streamlit locally
+
+```bash
+python -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+cp .env.example .env
+streamlit run app/streamlit_app.py
+```
+
+---
+
 ## Why this exists
 
 Most LLM tools optimize for **chat**.
