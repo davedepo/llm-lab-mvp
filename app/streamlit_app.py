@@ -62,13 +62,15 @@ if st.button("Run experiment", type="primary"):
                 if result.approximate_context_pressure_percent is not None
                 else "N/A"
             )
-            cols = st.columns(6)
+            cols = st.columns(4)
             cols[0].metric("Latency", f"{result.latency_seconds:.2f}s")
             cols[1].metric("Input tokens", result.approximate_input_tokens)
             cols[2].metric("Output tokens", result.approximate_output_tokens)
             cols[3].metric("Total tokens", result.approximate_total_tokens)
-            cols[4].metric("Approx. context pressure", context_pressure_value)
-            cols[5].metric("Est. cost", cost_value)
+
+            detail_cols = st.columns(2)
+            detail_cols[0].metric("Approx. context pressure", context_pressure_value)
+            detail_cols[1].metric("Est. cost", cost_value)
             st.caption("Token, context pressure, and cost values are approximate estimates.")
         except RuntimeError as error:
             st.error(str(error))
