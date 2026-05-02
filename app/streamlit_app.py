@@ -42,14 +42,28 @@ if st.button("Run experiment", type="primary"):
     elif provider == "OpenAI":
         try:
             with st.spinner("Running OpenAI experiment..."):
-                response_text = run_openai_experiment(
+                result = run_openai_experiment(
                     prompt=prompt,
                     model=model,
                     temperature=temperature,
                     max_output_tokens=max_output_tokens,
                 )
             st.subheader("Model response")
-            st.write(response_text)
+            st.write(result.output_text)
+
+            st.subheader("Approximate metrics")
+            cost_value = (
+                f"${result.approximate_cost_usd:.6f}"
+                if result.approximate_cost_usd is not None
+                else "N/A"
+            )
+            cols = st.columns(5)
+            cols[0].metric("Latency", f"{result.latency_seconds:.2f}s")
+            cols[1].metric("Input tokens", result.approximate_input_tokens)
+            cols[2].metric("Output tokens", result.approximate_output_tokens)
+            cols[3].metric("Total tokens", result.approximate_total_tokens)
+            cols[4].metric("Est. cost", cost_value)
+            st.caption("Token and cost values are approximate estimates.")
         except RuntimeError as error:
             st.error(str(error))
         except Exception as error:

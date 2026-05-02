@@ -1,6 +1,20 @@
 import os
+from dataclasses import dataclass
+from time import perf_counter
 
 from openai import OpenAI
+
+from metrics import estimate_openai_cost_usd, estimate_tokens
+
+
+@dataclass(frozen=True)
+class OpenAIExperimentResult:
+    output_text: str
+    latency_seconds: float
+    approximate_input_tokens: int
+    approximate_output_tokens: int
+    approximate_total_tokens: int
+    approximate_cost_usd: float | None
 
 
 def run_openai_experiment(
@@ -8,21 +22,39 @@ def run_openai_experiment(
     model: str,
     temperature: float,
     max_output_tokens: int,
-) -> str:
+) -> OpenAIExperimentResult:
     api_key = os.getenv("OPENAI_API_KEY")
     if not api_key:
         raise RuntimeError("OPENAI_API_KEY is missing. Add it to your .env file.")
 
     client = OpenAI(api_key=api_key)
+    start_time = perf_counter()
     response = client.responses.create(
         model=model,
         input=prompt,
         temperature=temperature,
         max_output_tokens=max_output_tokens,
     )
+    latency_seconds = perf_counter() - start_time
 
     output_text = getattr(response, "output_text", None)
-    if output_text:
-        return output_text
+    if not output_text:
+        raise RuntimeError("OpenAI returned a response without output text.")
 
-    raise RuntimeError("OpenAI returned a response without output text.")
+    approximate_input_tokens = estimate_tokens(prompt)
+    approximate_output_tokens = estimate_tokens(output_text)
+    approximate_total_tokens = approximate_input_tokens + approximate_output_tokens
+    approximate_cost_usd = estimate_openai_cost_usd(
+        model=model,
+        input_tokens=approximate_input_tokens,
+        output_tokens=approximate_output_tokens,
+    )
+
+    return OpenAIExperimentResult(
+        output_text=output_text,
+        latency_seconds=latency_seconds,
+        approximate_input_tokens=approximate_input_tokens,
+        approximate_output_tokens=approximate_output_tokens,
+        approximate_total_tokens=approximate_total_tokens,
+        approximate_cost_usd=approximate_cost_usd,
+    )
