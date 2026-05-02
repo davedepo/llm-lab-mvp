@@ -1,0 +1,775 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>llm-lab Simulator v4</title>
+  <style>
+    :root {
+      --bg: #f4f6f8;
+      --card: #ffffff;
+      --text: #111827;
+      --muted: #6b7280;
+      --border: #e5e7eb;
+      --soft: #f9fafb;
+      --ink: #0f172a;
+      --green: #16a34a;
+      --blue: #2563eb;
+      --amber: #d97706;
+      --purple: #7c3aed;
+      --shadow: 0 12px 30px rgba(15, 23, 42, 0.08);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+      background: linear-gradient(180deg, #f8fafc, var(--bg));
+      color: var(--text);
+    }
+
+    .page {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 22px;
+    }
+
+    .hero {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 16px;
+      margin-bottom: 18px;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 34px;
+      letter-spacing: -0.04em;
+    }
+
+    .tagline {
+      margin: 8px 0 0;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.5;
+      max-width: 720px;
+    }
+
+    .badge-row {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    .badge {
+      border: 1px solid var(--border);
+      background: var(--card);
+      border-radius: 999px;
+      padding: 8px 11px;
+      font-size: 12px;
+      color: #374151;
+      box-shadow: 0 3px 10px rgba(15,23,42,.04);
+      white-space: nowrap;
+    }
+
+    .toolbar {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 14px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      box-shadow: var(--shadow);
+      margin-bottom: 18px;
+      position: sticky;
+      top: 10px;
+      z-index: 5;
+    }
+
+    button {
+      border: 0;
+      background: var(--ink);
+      color: white;
+      border-radius: 14px;
+      padding: 12px 15px;
+      font-weight: 700;
+      cursor: pointer;
+      font-size: 13px;
+    }
+
+    button.secondary {
+      background: #eef2ff;
+      color: #3730a3;
+    }
+
+    .toolbar-note {
+      margin-left: auto;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .section-title {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      margin: 22px 0 12px;
+    }
+
+    .num {
+      height: 26px;
+      width: 26px;
+      border-radius: 50%;
+      background: var(--ink);
+      color: white;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    h2 {
+      margin: 0;
+      font-size: 20px;
+      letter-spacing: -0.02em;
+    }
+
+    .grid2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+
+    .grid4 {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 14px;
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 22px;
+      padding: 18px;
+      box-shadow: var(--shadow);
+    }
+
+    .card-head {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: flex-start;
+      margin-bottom: 14px;
+    }
+
+    .card h3 {
+      margin: 0;
+      font-size: 17px;
+    }
+
+    .micro {
+      color: var(--muted);
+      font-size: 11px;
+      line-height: 1.45;
+      margin-top: 4px;
+    }
+
+    .provider {
+      border-radius: 999px;
+      padding: 6px 10px;
+      font-size: 11px;
+      font-weight: 700;
+    }
+
+    .openai { background: #ecfdf5; color: #047857; }
+    .anthropic { background: #f5f3ff; color: #6d28d9; }
+
+    .field {
+      background: var(--soft);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 11px;
+      margin-bottom: 10px;
+    }
+
+    .label {
+      font-size: 10px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      font-weight: 800;
+      margin-bottom: 5px;
+    }
+
+    .value {
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    .mono {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    }
+
+    .params {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+    }
+
+    .param {
+      background: var(--soft);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 10px;
+    }
+
+    .param strong {
+      display: block;
+      font-size: 14px;
+      margin-top: 3px;
+    }
+
+    .pipeline-card {
+      padding: 16px;
+    }
+
+    .pipeline {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      overflow-x: auto;
+      white-space: nowrap;
+      padding-bottom: 3px;
+    }
+
+    .step {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      border-radius: 999px;
+      background: #f3f4f6;
+      border: 1px solid var(--border);
+      color: #4b5563;
+      padding: 8px 10px;
+      font-size: 12px;
+      font-weight: 800;
+      transition: all .25s ease;
+    }
+
+    .step.active {
+      background: var(--ink);
+      color: white;
+      transform: translateY(-1px);
+    }
+
+    .step.done {
+      background: #dcfce7;
+      color: #166534;
+      border-color: #bbf7d0;
+    }
+
+    .arrow {
+      color: #9ca3af;
+      font-size: 15px;
+      font-weight: 900;
+    }
+
+    .spinner {
+      display: none;
+      height: 8px;
+      width: 8px;
+      border-radius: 50%;
+      background: currentColor;
+      animation: pulse 1s infinite;
+    }
+
+    .active .spinner { display: inline-block; }
+
+    @keyframes pulse {
+      0%, 100% { opacity: .35; transform: scale(.8); }
+      50% { opacity: 1; transform: scale(1.15); }
+    }
+
+    .output-box {
+      min-height: 150px;
+      border-radius: 18px;
+      background: #0f172a;
+      color: #e5e7eb;
+      padding: 15px;
+      font-size: 13px;
+      line-height: 1.65;
+      opacity: .35;
+      transition: opacity .35s ease;
+    }
+
+    .output-box.ready { opacity: 1; }
+
+    .meter {
+      height: 9px;
+      width: 100%;
+      background: #e5e7eb;
+      border-radius: 999px;
+      overflow: hidden;
+      margin-top: 10px;
+    }
+
+    .meter > div {
+      height: 100%;
+      width: 0%;
+      border-radius: 999px;
+      transition: width 1s ease;
+    }
+
+    .m-blue { background: var(--blue); }
+    .m-purple { background: var(--purple); }
+    .m-amber { background: var(--amber); }
+    .m-green { background: var(--green); }
+
+    .metric {
+      min-height: 172px;
+    }
+
+    .metric-top {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+
+    .metric-name {
+      font-size: 13px;
+      font-weight: 900;
+    }
+
+    .definition {
+      font-size: 10.5px;
+      color: var(--muted);
+      line-height: 1.45;
+      margin-top: 4px;
+    }
+
+    .compare {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 9px;
+      margin: 12px 0;
+    }
+
+    .mini {
+      background: var(--soft);
+      border: 1px solid var(--border);
+      border-radius: 15px;
+      padding: 10px;
+    }
+
+    .mini span {
+      display: block;
+      color: var(--muted);
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: .07em;
+      font-weight: 800;
+    }
+
+    .mini b {
+      display: block;
+      font-size: 18px;
+      margin-top: 3px;
+    }
+
+    .explain {
+      border-top: 1px solid var(--border);
+      padding-top: 10px;
+      font-size: 11px;
+      line-height: 1.55;
+      color: #4b5563;
+    }
+
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+    }
+
+    .summary {
+      background: var(--soft);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 14px;
+      font-size: 13px;
+      line-height: 1.55;
+    }
+
+    .summary b {
+      display: block;
+      margin-bottom: 6px;
+    }
+
+    .hidden {
+      display: none;
+    }
+
+    @media (max-width: 820px) {
+      .page { padding: 14px; }
+      .hero { flex-direction: column; }
+      h1 { font-size: 30px; }
+      .badge-row { justify-content: flex-start; }
+      .grid2, .grid4, .summary-grid { grid-template-columns: 1fr; }
+      .params { grid-template-columns: repeat(2, 1fr); }
+      .toolbar { align-items: flex-start; flex-direction: column; position: static; }
+      .toolbar-note { margin-left: 0; }
+      .pipeline { font-size: 11px; }
+      .step { padding: 8px 9px; }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <header class="hero">
+      <div>
+        <h1>llm-lab</h1>
+        <p class="tagline">
+          A lightweight multi-provider simulator for prompt experiments, model comparison,
+          token visibility, cost analysis and output evaluation.
+        </p>
+      </div>
+      <div class="badge-row">
+        <span class="badge">BYOK</span>
+        <span class="badge">Provider-agnostic</span>
+        <span class="badge">Model input is manual</span>
+        <span class="badge">Only hard cap: per-call tokens</span>
+      </div>
+    </header>
+
+    <div class="toolbar">
+      <button onclick="runDemo()">Run demo flow</button>
+      <button class="secondary" onclick="resetDemo()">Reset</button>
+      <div class="toolbar-note">Demo flow: auto-fill → process → render outputs → compute analyzer results</div>
+    </div>
+
+    <section>
+      <div class="section-title">
+        <span class="num">1</span><h2>User Inputs</h2>
+      </div>
+
+      <div class="grid2">
+        <div class="card">
+          <div class="card-head">
+            <div>
+              <h3>Run A</h3>
+              <div class="micro">User controls provider, API key, model, prompt and parameters.</div>
+            </div>
+            <span class="provider openai">OpenAI</span>
+          </div>
+
+          <div class="field"><div class="label">API key</div><div class="value">••••••••••••••••••••••••</div></div>
+          <div class="field"><div class="label">Model name</div><div class="value mono">gpt-5.1-mini</div></div>
+          <div class="field"><div class="label">System instruction</div><div class="value">Return a concise, structured answer with decision-ready bullets.</div></div>
+          <div class="field"><div class="label">User prompt</div><div class="value">Evaluate whether an API-based personal LLM tool gives more control than a chat UI.</div></div>
+
+          <div class="params">
+            <div class="param"><div class="label">Temp</div><strong>0.4</strong></div>
+            <div class="param"><div class="label">Top-p</div><strong>1.0</strong></div>
+            <div class="param"><div class="label">Max out</div><strong>900</strong></div>
+            <div class="param"><div class="label">Budget</div><strong>128k</strong></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-head">
+            <div>
+              <h3>Run B</h3>
+              <div class="micro">Provider B can use a different API key and model for dynamic comparison.</div>
+            </div>
+            <span class="provider anthropic">Anthropic</span>
+          </div>
+
+          <div class="field"><div class="label">API key</div><div class="value">••••••••••••••••••••••••</div></div>
+          <div class="field"><div class="label">Model name</div><div class="value mono">claude-sonnet-4-5</div></div>
+          <div class="field"><div class="label">System instruction</div><div class="value">Return a detailed answer with tradeoffs, examples and implementation notes.</div></div>
+          <div class="field"><div class="label">User prompt</div><div class="value">Evaluate whether an API-based personal LLM tool gives more control than a chat UI.</div></div>
+
+          <div class="params">
+            <div class="param"><div class="label">Temp</div><strong>0.8</strong></div>
+            <div class="param"><div class="label">Top-p</div><strong>0.9</strong></div>
+            <div class="param"><div class="label">Max out</div><strong>1200</strong></div>
+            <div class="param"><div class="label">Budget</div><strong>200k</strong></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <div class="section-title">
+        <span class="num">2</span><h2>Processing</h2>
+      </div>
+
+      <div class="card pipeline-card">
+        <div class="pipeline" id="pipeline">
+          <span class="step" id="step1"><span class="spinner"></span>1 Validate inputs</span>
+          <span class="arrow">→</span>
+          <span class="step" id="step2"><span class="spinner"></span>2 Route provider</span>
+          <span class="arrow">→</span>
+          <span class="step" id="step3"><span class="spinner"></span>3 Execute calls</span>
+          <span class="arrow">→</span>
+          <span class="step" id="step4"><span class="spinner"></span>4 Parse responses</span>
+          <span class="arrow">→</span>
+          <span class="step" id="step5"><span class="spinner"></span>5 Compute analyzer</span>
+        </div>
+        <div class="micro" id="processNote" style="margin-top:10px;">
+          Press “Run demo flow” to simulate a full experiment lifecycle.
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <div class="section-title">
+        <span class="num">3</span><h2>Outputs</h2>
+      </div>
+
+      <div class="grid2">
+        <div class="card">
+          <div class="card-head">
+            <div><h3>Output A</h3><div class="micro">Raw response from Run A.</div></div>
+            <span class="badge">Concise</span>
+          </div>
+          <div class="output-box" id="outA">Output will render after processing.</div>
+        </div>
+
+        <div class="card">
+          <div class="card-head">
+            <div><h3>Output B</h3><div class="micro">Raw response from Run B.</div></div>
+            <span class="badge">Detailed</span>
+          </div>
+          <div class="output-box" id="outB">Output will render after processing.</div>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <div class="section-title">
+        <span class="num">4</span><h2>Analyzer Dashboard</h2>
+      </div>
+
+      <div class="grid4">
+        <div class="card metric">
+          <div class="metric-top">
+            <div>
+              <div class="metric-name">Context pressure</div>
+              <div class="definition">Input tokens divided by user-defined context budget. Useful for spotting risk of long-context overflow, cost growth and slower runs.</div>
+            </div>
+          </div>
+          <div class="compare">
+            <div class="mini"><span>Run A</span><b id="ctxA">0%</b></div>
+            <div class="mini"><span>Run B</span><b id="ctxB">0%</b></div>
+          </div>
+          <div class="meter"><div id="ctxBar" class="m-blue"></div></div>
+          <div class="explain" id="ctxExplain">Run the demo to compare context usage.</div>
+        </div>
+
+        <div class="card metric">
+          <div class="metric-top">
+            <div>
+              <div class="metric-name">Output tokens</div>
+              <div class="definition">The generated response size. Useful for comparing verbosity, depth and cost sensitivity.</div>
+            </div>
+          </div>
+          <div class="compare">
+            <div class="mini"><span>Run A</span><b id="tokA">0</b></div>
+            <div class="mini"><span>Run B</span><b id="tokB">0</b></div>
+          </div>
+          <div class="meter"><div id="tokBar" class="m-purple"></div></div>
+          <div class="explain" id="tokExplain">Run the demo to compare response size.</div>
+        </div>
+
+        <div class="card metric">
+          <div class="metric-top">
+            <div>
+              <div class="metric-name">Estimated cost</div>
+              <div class="definition">Estimated provider charge for input and output tokens. Useful for judging quality-to-cost tradeoffs.</div>
+            </div>
+          </div>
+          <div class="compare">
+            <div class="mini"><span>Run A</span><b id="costA">$0</b></div>
+            <div class="mini"><span>Run B</span><b id="costB">$0</b></div>
+          </div>
+          <div class="meter"><div id="costBar" class="m-amber"></div></div>
+          <div class="explain" id="costExplain">Run the demo to compare cost.</div>
+        </div>
+
+        <div class="card metric">
+          <div class="metric-top">
+            <div>
+              <div class="metric-name">Latency</div>
+              <div class="definition">Time taken to complete the call. Useful for selecting models for interactive vs batch workflows.</div>
+            </div>
+          </div>
+          <div class="compare">
+            <div class="mini"><span>Run A</span><b id="latA">0s</b></div>
+            <div class="mini"><span>Run B</span><b id="latB">0s</b></div>
+          </div>
+          <div class="meter"><div id="latBar" class="m-green"></div></div>
+          <div class="explain" id="latExplain">Run the demo to compare speed.</div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:16px;">
+        <div class="card-head">
+          <div>
+            <h3>Difference explanation</h3>
+            <div class="micro">Rule-based explanation generated from outputs, parameters and metrics.</div>
+          </div>
+        </div>
+        <div class="summary-grid">
+          <div class="summary"><b>Behavior difference</b><span id="diff1">Run the demo to render behavioral comparison.</span></div>
+          <div class="summary"><b>Likely cause</b><span id="diff2">Run the demo to render parameter-based explanation.</span></div>
+          <div class="summary"><b>Decision note</b><span id="diff3">Run the demo to render model-selection guidance.</span></div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const data = {
+      a: {
+        inputTokens: 1840,
+        outputTokens: 612,
+        totalTokens: 2452,
+        contextBudget: 128000,
+        cost: 0.0048,
+        latency: 2.1,
+        output: "API-based personal tooling gives more control than a chat UI when you need reproducibility, parameter control, model selection, cost visibility and workflow automation. For casual use, a chat UI is simpler; for experiments, the API path is stronger."
+      },
+      b: {
+        inputTokens: 1865,
+        outputTokens: 1048,
+        totalTokens: 2913,
+        contextBudget: 200000,
+        cost: 0.0096,
+        latency: 3.4,
+        output: "An API-based LLM tool is more flexible than a standard chat interface because it lets the user define the provider, model, parameters, logging strategy and analysis workflow. It is especially useful for experiments where the goal is to compare behavior across models, understand token usage, evaluate cost and inspect response differences. The tradeoff is that the user must manage keys, costs and implementation quality."
+      }
+    };
+
+    let animators = [];
+
+    function sleep(ms) { return new Promise(resolve => setTimeout(resolve, ms)); }
+
+    function resetDemo() {
+      animators.forEach(id => clearInterval(id));
+      animators = [];
+      document.querySelectorAll(".step").forEach(s => {
+        s.classList.remove("active", "done");
+      });
+
+      document.getElementById("processNote").innerText = "Press “Run demo flow” to simulate a full experiment lifecycle.";
+
+      ["outA", "outB"].forEach(id => {
+        const el = document.getElementById(id);
+        el.classList.remove("ready");
+        el.innerText = "Output will render after processing.";
+      });
+
+      setText("ctxA", "0%");
+      setText("ctxB", "0%");
+      setText("tokA", "0");
+      setText("tokB", "0");
+      setText("costA", "$0");
+      setText("costB", "$0");
+      setText("latA", "0s");
+      setText("latB", "0s");
+
+      ["ctxBar","tokBar","costBar","latBar"].forEach(id => document.getElementById(id).style.width = "0%");
+      setText("ctxExplain", "Run the demo to compare context usage.");
+      setText("tokExplain", "Run the demo to compare response size.");
+      setText("costExplain", "Run the demo to compare cost.");
+      setText("latExplain", "Run the demo to compare speed.");
+      setText("diff1", "Run the demo to render behavioral comparison.");
+      setText("diff2", "Run the demo to render parameter-based explanation.");
+      setText("diff3", "Run the demo to render model-selection guidance.");
+    }
+
+    function setText(id, value) {
+      document.getElementById(id).innerText = value;
+    }
+
+    function animateNumber(id, end, prefix="", suffix="", decimals=0, duration=900) {
+      const el = document.getElementById(id);
+      const start = 0;
+      const frames = 30;
+      const step = end / frames;
+      let current = start;
+      let count = 0;
+      const timer = setInterval(() => {
+        count += 1;
+        current += step;
+        if (count >= frames) {
+          current = end;
+          clearInterval(timer);
+        }
+        el.innerText = prefix + current.toFixed(decimals) + suffix;
+      }, duration / frames);
+      animators.push(timer);
+    }
+
+    async function runStep(stepId, note, delay) {
+      const step = document.getElementById(stepId);
+      step.classList.add("active");
+      document.getElementById("processNote").innerText = note;
+      await sleep(delay);
+      step.classList.remove("active");
+      step.classList.add("done");
+    }
+
+    async function runDemo() {
+      resetDemo();
+      await sleep(250);
+      await runStep("step1", "Validating API keys, model names, prompts and per-call safety caps.", 650);
+      await runStep("step2", "Routing Run A to OpenAI adapter and Run B to Anthropic adapter.", 650);
+      await runStep("step3", "Executing two model calls with user-defined parameters.", 900);
+      await runStep("step4", "Parsing raw responses and normalizing provider-specific usage objects.", 650);
+      await runStep("step5", "Computing token usage, estimated cost, latency and difference explanations.", 750);
+
+      document.getElementById("processNote").innerText = "Experiment complete: outputs and analyzer results are ready.";
+
+      const outA = document.getElementById("outA");
+      const outB = document.getElementById("outB");
+      outA.innerText = data.a.output;
+      outB.innerText = data.b.output;
+      outA.classList.add("ready");
+      outB.classList.add("ready");
+
+      const ctxA = (data.a.inputTokens / data.a.contextBudget) * 100;
+      const ctxB = (data.b.inputTokens / data.b.contextBudget) * 100;
+
+      animateNumber("ctxA", ctxA, "", "%", 1);
+      animateNumber("ctxB", ctxB, "", "%", 1);
+      animateNumber("tokA", data.a.outputTokens, "", "", 0);
+      animateNumber("tokB", data.b.outputTokens, "", "", 0);
+      animateNumber("costA", data.a.cost, "$", "", 4);
+      animateNumber("costB", data.b.cost, "$", "", 4);
+      animateNumber("latA", data.a.latency, "", "s", 1);
+      animateNumber("latB", data.b.latency, "", "s", 1);
+
+      await sleep(350);
+      document.getElementById("ctxBar").style.width = "18%";
+      document.getElementById("tokBar").style.width = "74%";
+      document.getElementById("costBar").style.width = "82%";
+      document.getElementById("latBar").style.width = "68%";
+
+      setText("ctxExplain", "Both runs are far below their context budgets. Run B has slightly more input tokens but a larger budget, so its context pressure remains lower.");
+      setText("tokExplain", "Run B generated about 71% more output tokens, making it more verbose and more suitable for detailed explanation.");
+      setText("costExplain", "Run B costs more because it produced more output and may use a higher-priced provider/model configuration.");
+      setText("latExplain", "Run B is slower, likely because it generated more tokens and used a more expansive response style.");
+
+      setText("diff1", "Run A is concise and decision-oriented. Run B is more detailed and explanatory.");
+      setText("diff2", "Run B uses higher temperature, lower top-p, and a larger max output cap, so it has more room to produce a longer response.");
+      setText("diff3", "Choose Run A for speed and cost discipline. Choose Run B when depth, nuance and explanation are more important.");
+    }
+  </script>
+</body>
+</html>
