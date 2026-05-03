@@ -12,6 +12,18 @@ OPENAI_PRICING_USD_PER_1M_TOKENS = {
         "input": 2.00,
         "output": 8.00,
     },
+    "gpt-4o-mini": {
+        "input": 0.15,
+        "output": 0.60,
+    },
+    "gpt-4o": {
+        "input": 2.50,
+        "output": 10.00,
+    },
+    "o4-mini": {
+        "input": 1.10,
+        "output": 4.40,
+    },
 }
 
 
@@ -19,6 +31,9 @@ OPENAI_PRICING_USD_PER_1M_TOKENS = {
 MODEL_CONTEXT_WINDOWS = {
     "gpt-4.1-mini": 1_000_000,
     "gpt-4.1": 1_000_000,
+    "gpt-4o-mini": 128_000,
+    "gpt-4o": 128_000,
+    "o4-mini": 200_000,
 }
 
 

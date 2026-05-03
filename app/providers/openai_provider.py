@@ -28,6 +28,7 @@ def run_openai_experiment(
     temperature: float,
     max_output_tokens: int,
     api_key: str | None = None,
+    system_instruction: str | None = None,
 ) -> OpenAIExperimentResult:
     resolved_api_key = api_key or os.getenv("OPENAI_API_KEY")
     if not resolved_api_key:
@@ -37,20 +38,27 @@ def run_openai_experiment(
         )
 
     client = OpenAI(api_key=resolved_api_key)
+    request_args = {
+        "model": model,
+        "input": prompt,
+        "temperature": temperature,
+        "max_output_tokens": max_output_tokens,
+    }
+    if system_instruction and system_instruction.strip():
+        request_args["instructions"] = system_instruction.strip()
+
     start_time = perf_counter()
-    response = client.responses.create(
-        model=model,
-        input=prompt,
-        temperature=temperature,
-        max_output_tokens=max_output_tokens,
-    )
+    response = client.responses.create(**request_args)
     latency_seconds = perf_counter() - start_time
 
     output_text = getattr(response, "output_text", None)
     if not output_text:
         raise RuntimeError("OpenAI returned a response without output text.")
 
-    approximate_input_tokens = estimate_tokens(prompt)
+    input_text = "\n".join(
+        value for value in [system_instruction, prompt] if value and value.strip()
+    )
+    approximate_input_tokens = estimate_tokens(input_text)
     approximate_output_tokens = estimate_tokens(output_text)
     approximate_total_tokens = approximate_input_tokens + approximate_output_tokens
     approximate_context_pressure_percent = estimate_context_pressure(
