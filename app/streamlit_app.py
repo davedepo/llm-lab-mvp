@@ -173,6 +173,9 @@ EXPERIMENT_KEY_MAP = {
     "max_output_tokens": "max_output_tokens",
 }
 
+NEGLIGIBLE_COST_DIFF_USD = 0.0001
+MATERIAL_RATIO_DIFF = 0.2
+
 
 def format_cost(value: float | None) -> str:
     return f"${value:.6f}" if value is not None else "Pricing unavailable"
@@ -182,40 +185,296 @@ def format_context_pressure(value: float | None) -> str:
     return f"{value:.2f}%" if value is not None else "Context window unavailable"
 
 
-def model_metrics_rows(result, cost_value: str, context_pressure_value: str):
+def status_label(experiment: dict, result, status_message: str) -> str:
+    if experiment["provider"] != "OpenAI":
+        return "Unsupported provider placeholder"
+    if result is not None:
+        return "Completed"
+    return status_message
+
+
+def candidate_metrics_rows(label: str, experiment: dict, result, status_message: str):
+    if result is None:
+        return [
+            {
+                "Candidate": label,
+                "Provider": experiment["provider"],
+                "Model": experiment["model"],
+                "Run status": status_label(experiment, result, status_message),
+                "Est. input tokens": "Unavailable",
+                "Est. output tokens": "Unavailable",
+                "Est. total tokens": "Unavailable",
+                "Est. cost": "Unavailable",
+                "Approx. context pressure": "Unavailable",
+            }
+        ]
+
     return [
-        {"Metric": "Latency", "Value": f"{result.latency_seconds:.2f}s"},
-        {"Metric": "Input tokens", "Value": str(result.approximate_input_tokens)},
-        {"Metric": "Output tokens", "Value": str(result.approximate_output_tokens)},
-        {"Metric": "Total tokens", "Value": str(result.approximate_total_tokens)},
-        {"Metric": "Approx. context pressure", "Value": context_pressure_value},
-        {"Metric": "Est. cost", "Value": cost_value},
+        {
+            "Candidate": label,
+            "Provider": experiment["provider"],
+            "Model": experiment["model"],
+            "Run status": status_label(experiment, result, status_message),
+            "Est. input tokens": str(result.approximate_input_tokens),
+            "Est. output tokens": str(result.approximate_output_tokens),
+            "Est. total tokens": str(result.approximate_total_tokens),
+            "Est. cost": format_cost(result.approximate_cost_usd),
+            "Approx. context pressure": format_context_pressure(
+                result.approximate_context_pressure_percent
+            ),
+        }
     ]
 
 
-def render_model_panel(label: str, experiment: dict, result) -> tuple[str, str]:
-    cost_value = format_cost(result.approximate_cost_usd)
-    context_pressure_value = format_context_pressure(
-        result.approximate_context_pressure_percent
+def render_output_card(label: str, experiment: dict, result, status_message: str) -> None:
+    with st.container(border=True):
+        st.markdown(f"**{label}: {experiment['provider']} / `{experiment['model']}`**")
+        st.caption(f"Run status: {status_label(experiment, result, status_message)}")
+
+        if experiment["provider"] != "OpenAI":
+            st.info(
+                f"{experiment['provider']} is a placeholder provider and is not "
+                "implemented yet."
+            )
+        elif result is None:
+            st.warning(status_message)
+        else:
+            st.write(result.output_text)
+
+
+def render_model_outputs(
+    experiment_a: dict,
+    experiment_b: dict,
+    result_a,
+    result_b,
+    status_a: str,
+    status_b: str,
+) -> None:
+    st.subheader("Model Output")
+    output_cols = st.columns(2)
+    with output_cols[0]:
+        render_output_card("Candidate A", experiment_a, result_a, status_a)
+    with output_cols[1]:
+        render_output_card("Candidate B", experiment_b, result_b, status_b)
+
+
+def render_approximate_metrics(
+    experiment_a: dict,
+    experiment_b: dict,
+    result_a,
+    result_b,
+    status_a: str,
+    status_b: str,
+) -> None:
+    st.subheader("Approximate Metrics")
+    st.caption(
+        "Token, cost, and context pressure values are approximate local estimates. "
+        "Unsupported or failed runs do not produce live metrics."
+    )
+    st.table(
+        candidate_metrics_rows("Candidate A", experiment_a, result_a, status_a)
+        + candidate_metrics_rows("Candidate B", experiment_b, result_b, status_b)
     )
 
-    with st.container(border=True):
-        st.markdown(
-            f"**{label}: {experiment['provider']} / `{experiment['model']}`**"
+
+def ratio_difference(value_a: float | int | None, value_b: float | int | None):
+    if value_a is None or value_b is None:
+        return None
+
+    baseline = max(abs(value_a), abs(value_b), 1)
+    return abs(value_a - value_b) / baseline
+
+
+def lower_candidate(value_a: float | None, value_b: float | None):
+    if value_a is None or value_b is None or value_a == value_b:
+        return None
+    return "Candidate A" if value_a < value_b else "Candidate B"
+
+
+def higher_candidate(value_a: float | int | None, value_b: float | int | None):
+    if value_a is None or value_b is None or value_a == value_b:
+        return None
+    return "Candidate A" if value_a > value_b else "Candidate B"
+
+
+def comparison_type_statement(experiment_a: dict, experiment_b: dict) -> str:
+    provider_differs = experiment_a["provider"] != experiment_b["provider"]
+    model_differs = experiment_a["model"] != experiment_b["model"]
+    system_differs = (
+        experiment_a["system_instruction"].strip()
+        != experiment_b["system_instruction"].strip()
+    )
+    prompt_differs = experiment_a["prompt"].strip() != experiment_b["prompt"].strip()
+    parameter_differs = (
+        experiment_a["temperature"] != experiment_b["temperature"]
+        or experiment_a["max_output_tokens"] != experiment_b["max_output_tokens"]
+    )
+
+    if provider_differs:
+        if experiment_a["provider"] != "OpenAI" or experiment_b["provider"] != "OpenAI":
+            return "Different providers; only OpenAI is currently live."
+        return "Different providers."
+    if model_differs:
+        return "Same provider, different models."
+    if prompt_differs and not system_differs:
+        return "Same model, different prompts."
+    if system_differs and not prompt_differs:
+        return "Same model, different system instructions."
+    if parameter_differs:
+        return "Same model, different generation parameters."
+    return "Same setup."
+
+
+def setup_change_count(experiment_a: dict, experiment_b: dict) -> int:
+    changed = 0
+    changed += experiment_a["provider"] != experiment_b["provider"]
+    changed += experiment_a["model"] != experiment_b["model"]
+    changed += (
+        experiment_a["system_instruction"].strip()
+        != experiment_b["system_instruction"].strip()
+    )
+    changed += experiment_a["prompt"].strip() != experiment_b["prompt"].strip()
+    changed += experiment_a["temperature"] != experiment_b["temperature"]
+    changed += experiment_a["max_output_tokens"] != experiment_b["max_output_tokens"]
+    return changed
+
+
+def build_decision_intelligence(
+    experiment_a: dict,
+    experiment_b: dict,
+    result_a,
+    result_b,
+) -> list[str]:
+    insights = []
+    unsupported = unsupported_providers(experiment_a, experiment_b)
+
+    if unsupported:
+        insights.append(
+            "Decision intelligence is incomplete because "
+            + ", ".join(unsupported)
+            + " uses an unsupported provider placeholder."
         )
-        st.write(result.output_text)
-        st.markdown("**Approximate metrics**")
-        st.table(model_metrics_rows(result, cost_value, context_pressure_value))
 
-        notes = []
-        if result.approximate_cost_usd is None:
-            notes.append("pricing is not available for this model")
-        if result.approximate_context_pressure_percent is None:
-            notes.append("context window is not available for this model")
-        if notes:
-            st.caption("Fallback note: " + "; ".join(notes) + ".")
+    if not experiment_a["prompt"].strip() or not experiment_b["prompt"].strip():
+        insights.append(
+            "Decision intelligence is incomplete because one or both user prompts are missing."
+        )
 
-    return cost_value, context_pressure_value
+    if result_a is None and result_b is None:
+        insights.append(
+            "No live comparison result is available yet, so guidance is limited to setup review."
+        )
+    elif result_a is None:
+        insights.append(
+            "Only Candidate B produced a live result. Decision intelligence is partial."
+        )
+    elif result_b is None:
+        insights.append(
+            "Only Candidate A produced a live result. Decision intelligence is partial."
+        )
+
+    if result_a is not None and result_b is not None:
+        cheaper = lower_candidate(
+            result_a.approximate_cost_usd,
+            result_b.approximate_cost_usd,
+        )
+        cost_ratio = ratio_difference(
+            result_a.approximate_cost_usd,
+            result_b.approximate_cost_usd,
+        )
+        if cheaper and cost_ratio is not None:
+            cost_delta = abs(result_a.approximate_cost_usd - result_b.approximate_cost_usd)
+            if cost_delta <= NEGLIGIBLE_COST_DIFF_USD:
+                insights.append(
+                    "The estimated cost difference is negligible, so selection should "
+                    "primarily depend on output fit."
+                )
+            else:
+                insights.append(
+                    f"{cheaper} appears more cost-efficient based on the estimated "
+                    "token and cost calculations."
+                )
+
+        token_heavier = higher_candidate(
+            result_a.approximate_total_tokens,
+            result_b.approximate_total_tokens,
+        )
+        token_ratio = ratio_difference(
+            result_a.approximate_total_tokens,
+            result_b.approximate_total_tokens,
+        )
+        if token_heavier and token_ratio is not None:
+            if token_ratio >= MATERIAL_RATIO_DIFF:
+                insights.append(
+                    f"{token_heavier} is more token-heavy, which may matter for "
+                    "cost-sensitive or high-volume use."
+                )
+            else:
+                insights.append("Both candidates have similar estimated total token usage.")
+
+        longer_output = higher_candidate(
+            result_a.approximate_output_tokens,
+            result_b.approximate_output_tokens,
+        )
+        output_ratio = ratio_difference(
+            result_a.approximate_output_tokens,
+            result_b.approximate_output_tokens,
+        )
+        if longer_output and output_ratio is not None:
+            if output_ratio >= MATERIAL_RATIO_DIFF:
+                insights.append(
+                    f"{longer_output} produced a longer response and may be better "
+                    "for exploratory use, but it may be more expensive at scale."
+                )
+            else:
+                insights.append("Both candidates produced similarly sized responses.")
+
+        higher_context = higher_candidate(
+            result_a.approximate_context_pressure_percent,
+            result_b.approximate_context_pressure_percent,
+        )
+        context_ratio = ratio_difference(
+            result_a.approximate_context_pressure_percent,
+            result_b.approximate_context_pressure_percent,
+        )
+        if higher_context and context_ratio is not None:
+            if context_ratio >= MATERIAL_RATIO_DIFF:
+                insights.append(
+                    f"{higher_context} has higher context pressure, which may matter "
+                    "for long prompts or multi-turn workflows."
+                )
+            else:
+                insights.append("Both candidates have similar estimated context pressure.")
+
+        if not insights:
+            insights.append(
+                "The approximate metrics are very close, so focus on which output "
+                "best fits the use case."
+            )
+
+    if setup_change_count(experiment_a, experiment_b) > 1:
+        insights.append(
+            "This comparison changes multiple setup variables, so differences cannot "
+            "be attributed to one cause alone."
+        )
+
+    return insights
+
+
+def render_decision_intelligence(insights: list[str]) -> None:
+    st.subheader("Decision Intelligence")
+    st.caption(
+        "Deterministic guidance based on setup, run status, and approximate metrics. "
+        "No LLM judge is used."
+    )
+    for insight in insights:
+        st.markdown(f"- {insight}")
+
+
+def render_run_summary(summary: list[str]) -> None:
+    st.subheader("Run Summary")
+    for item in summary:
+        st.markdown(f"- {item}")
 
 
 def resolve_model(preset_model: str, custom_model: str) -> str:
@@ -257,23 +516,6 @@ def markdown_block(value: str) -> str:
     return f"```\n{value.strip() if value else ''}\n```"
 
 
-def result_metrics_for_report(result) -> list[tuple[str, str]]:
-    if result is None:
-        return []
-
-    return [
-        ("Latency", f"{result.latency_seconds:.2f}s"),
-        ("Approx. input tokens", str(result.approximate_input_tokens)),
-        ("Approx. output tokens", str(result.approximate_output_tokens)),
-        ("Approx. total tokens", str(result.approximate_total_tokens)),
-        ("Approx. estimated cost", format_cost(result.approximate_cost_usd)),
-        (
-            "Approx. context pressure",
-            format_context_pressure(result.approximate_context_pressure_percent),
-        ),
-    ]
-
-
 def experiment_config_markdown(label: str, experiment: dict) -> str:
     return "\n".join(
         [
@@ -297,25 +539,105 @@ def experiment_config_markdown(label: str, experiment: dict) -> str:
 
 def result_markdown(label: str, experiment: dict, result, status_message: str) -> str:
     lines = [
-        f"### {label} Result",
+        f"### {label} Output",
         "",
-        f"- Status: {status_message}",
+        f"- Status: {status_label(experiment, result, status_message)}",
         f"- Provider: {experiment['provider']}",
         f"- Model: {experiment['model']}",
     ]
-
-    for metric, value in result_metrics_for_report(result):
-        lines.append(f"- {metric}: {value}")
 
     lines.extend(["", "Output:", markdown_block(result.output_text if result else "")])
     return "\n".join(lines)
 
 
 def comparison_summary_markdown(experiment_a: dict, experiment_b: dict) -> str:
-    lines = ["## Comparison Summary", "", "| Field | Status |", "| --- | --- |"]
+    lines = [
+        "## Comparison Setup Summary",
+        "",
+        f"Comparison type: {comparison_type_statement(experiment_a, experiment_b)}",
+        "",
+        "| Field | Status | Candidate A | Candidate B |",
+        "| --- | --- | --- | --- |",
+    ]
     for row in comparison_setup_rows(experiment_a, experiment_b):
-        lines.append(f"| {row['Field']} | {row['Status']} |")
+        lines.append(
+            f"| {row['Field']} | {row['Status']} | "
+            f"{row['Experiment A']} | {row['Experiment B']} |"
+        )
     return "\n".join(lines)
+
+
+def approximate_metrics_markdown(
+    experiment_a: dict,
+    experiment_b: dict,
+    result_a,
+    result_b,
+    status_a: str,
+    status_b: str,
+) -> str:
+    lines = [
+        "## Approximate Metrics",
+        "",
+        "Token, cost, and context pressure values are approximate local estimates.",
+        "",
+        "| Candidate | Provider | Model | Run status | Est. input tokens | "
+        "Est. output tokens | Est. total tokens | Est. cost | "
+        "Approx. context pressure |",
+        "| --- | --- | --- | --- | --- | --- | --- | --- | --- |",
+    ]
+    for row in candidate_metrics_rows(
+        "Candidate A", experiment_a, result_a, status_a
+    ) + candidate_metrics_rows("Candidate B", experiment_b, result_b, status_b):
+        lines.append(
+            f"| {row['Candidate']} | {row['Provider']} | {row['Model']} | "
+            f"{row['Run status']} | {row['Est. input tokens']} | "
+            f"{row['Est. output tokens']} | {row['Est. total tokens']} | "
+            f"{row['Est. cost']} | {row['Approx. context pressure']} |"
+        )
+    return "\n".join(lines)
+
+
+def decision_intelligence_markdown(insights: list[str]) -> str:
+    lines = [
+        "## Decision Intelligence",
+        "",
+        "Deterministic guidance based on setup, run status, and approximate metrics. "
+        "No LLM judge is used.",
+        "",
+    ]
+    lines.extend(f"- {insight}" for insight in insights)
+    return "\n".join(lines)
+
+
+def build_run_summary(
+    experiment_a: dict,
+    experiment_b: dict,
+    result_a,
+    result_b,
+    status_a: str,
+    status_b: str,
+) -> list[str]:
+    unsupported = unsupported_providers(experiment_a, experiment_b)
+    summary = [
+        f"Candidate A: {status_label(experiment_a, result_a, status_a)}",
+        f"Candidate B: {status_label(experiment_b, result_b, status_b)}",
+        "OpenAI is currently the only live execution provider.",
+        "Token, cost, and context pressure values are approximate.",
+    ]
+
+    if unsupported:
+        summary.append(
+            "Unsupported provider placeholders selected for: "
+            + ", ".join(unsupported)
+            + "."
+        )
+    if not experiment_a["prompt"].strip() or not experiment_b["prompt"].strip():
+        summary.append("One or both user prompts are missing.")
+    return summary
+
+
+def run_summary_markdown(summary: list[str]) -> str:
+    return "\n".join(["## Run Summary", ""] + [f"- {item}" for item in summary])
 
 
 def build_markdown_report(
@@ -325,18 +647,42 @@ def build_markdown_report(
     result_b=None,
     status_a: str = "Not run",
     status_b: str = "Not run",
+    preset_name: str | None = None,
+    insights: list[str] | None = None,
+    run_summary: list[str] | None = None,
 ) -> str:
     timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
+    insights = insights or build_decision_intelligence(
+        experiment_a, experiment_b, result_a, result_b
+    )
+    run_summary = run_summary or build_run_summary(
+        experiment_a, experiment_b, result_a, result_b, status_a, status_b
+    )
     return "\n\n".join(
         [
             "# LLM Lab MVP Comparison Report",
             f"Generated: {timestamp}",
-            "OpenAI is currently the only live execution provider. Other providers are placeholders.",
+            "OpenAI is currently the only live execution provider. Other providers "
+            "are placeholders.",
+            "## Comparison Preset Used",
+            preset_name or "No preset applied in this session.",
+            "## User Input / Candidate Configuration",
             experiment_config_markdown("Candidate A", experiment_a),
             experiment_config_markdown("Candidate B", experiment_b),
+            comparison_summary_markdown(experiment_a, experiment_b),
+            "## Model Outputs",
             result_markdown("Candidate A", experiment_a, result_a, status_a),
             result_markdown("Candidate B", experiment_b, result_b, status_b),
-            comparison_summary_markdown(experiment_a, experiment_b),
+            approximate_metrics_markdown(
+                experiment_a,
+                experiment_b,
+                result_a,
+                result_b,
+                status_a,
+                status_b,
+            ),
+            decision_intelligence_markdown(insights),
+            run_summary_markdown(run_summary),
             "Note: token, cost, and context pressure values are approximate.",
         ]
     )
@@ -485,6 +831,17 @@ def unsupported_providers(experiment_a: dict, experiment_b: dict) -> list[str]:
     ]
 
 
+def run_openai_candidate(experiment: dict):
+    return run_openai_experiment(
+        prompt=experiment["prompt"],
+        model=experiment["model"],
+        temperature=experiment["temperature"],
+        max_output_tokens=experiment["max_output_tokens"],
+        api_key=experiment["api_key"],
+        system_instruction=experiment["system_instruction"],
+    )
+
+
 st.title("LLM Lab MVP")
 st.caption(
     "A lightweight LLM experimentation tool for comparing prompts, models, "
@@ -498,6 +855,7 @@ st.caption(
 initialize_experiment_defaults("experiment_a", 0)
 initialize_experiment_defaults("experiment_b", 1)
 
+st.subheader("Comparison Presets")
 with st.container(border=True):
     preset_cols = st.columns([2, 4, 1])
     with preset_cols[0]:
@@ -511,19 +869,27 @@ with st.container(border=True):
     with preset_cols[2]:
         if st.button("Apply preset"):
             apply_preset_to_session_state(selected_preset)
+            st.session_state["last_applied_preset"] = selected_preset
             st.success(f"Applied preset: {selected_preset}")
 
+st.subheader("User Input")
 setup_cols = st.columns(2)
 with setup_cols[0]:
     experiment_a = build_experiment_panel("Experiment A", "experiment_a", 0)
 with setup_cols[1]:
     experiment_b = build_experiment_panel("Experiment B", "experiment_b", 1)
 
-st.subheader("Comparison setup summary")
+st.subheader("Comparison Setup Summary")
+st.caption(comparison_type_statement(experiment_a, experiment_b))
 st.table(comparison_setup_rows(experiment_a, experiment_b))
 
 if st.button("Run experiment", type="primary"):
+    result_a = None
+    result_b = None
+    status_a = "Not run"
+    status_b = "Not run"
     blocked_experiments = unsupported_providers(experiment_a, experiment_b)
+
     if blocked_experiments:
         status_a = (
             "Not run: provider placeholder"
@@ -544,14 +910,10 @@ if st.button("Run experiment", type="primary"):
             + ", ".join(blocked_experiments)
             + ". No live API call was attempted."
         )
-        st.session_state["last_report_markdown"] = build_markdown_report(
-            experiment_a,
-            experiment_b,
-            status_a=status_a,
-            status_b=status_b,
-        )
         st.session_state["last_report_filename"] = "llm-lab-placeholder-comparison.md"
     elif not experiment_a["prompt"].strip() or not experiment_b["prompt"].strip():
+        status_a = "Not run: missing user prompt"
+        status_b = "Not run: missing user prompt"
         st.warning("Enter a user prompt for both experiments before running.")
     else:
         if experiments_are_identical(experiment_a, experiment_b):
@@ -560,71 +922,67 @@ if st.button("Run experiment", type="primary"):
                 "similar unless randomness introduces variation."
             )
 
-        try:
-            with st.spinner("Running Experiment A..."):
-                result_a = run_openai_experiment(
-                    prompt=experiment_a["prompt"],
-                    model=experiment_a["model"],
-                    temperature=experiment_a["temperature"],
-                    max_output_tokens=experiment_a["max_output_tokens"],
-                    api_key=experiment_a["api_key"],
-                    system_instruction=experiment_a["system_instruction"],
-                )
+        with st.spinner("Running Experiment A..."):
+            try:
+                result_a = run_openai_candidate(experiment_a)
+                status_a = "Completed"
+            except RuntimeError as error:
+                status_a = str(error)
+                st.error(status_a)
+            except Exception:
+                status_a = "Failed: OpenAI API call did not complete."
+                st.error(status_a)
 
-            with st.spinner("Running Experiment B..."):
-                result_b = run_openai_experiment(
-                    prompt=experiment_b["prompt"],
-                    model=experiment_b["model"],
-                    temperature=experiment_b["temperature"],
-                    max_output_tokens=experiment_b["max_output_tokens"],
-                    api_key=experiment_b["api_key"],
-                    system_instruction=experiment_b["system_instruction"],
-                )
+        with st.spinner("Running Experiment B..."):
+            try:
+                result_b = run_openai_candidate(experiment_b)
+                status_b = "Completed"
+            except RuntimeError as error:
+                status_b = str(error)
+                st.error(status_b)
+            except Exception:
+                status_b = "Failed: OpenAI API call did not complete."
+                st.error(status_b)
 
-            st.subheader("Model comparison")
-            comparison_cols = st.columns(2)
-            with comparison_cols[0]:
-                cost_a, context_pressure_a = render_model_panel(
-                    "Experiment A", experiment_a, result_a
-                )
-            with comparison_cols[1]:
-                cost_b, context_pressure_b = render_model_panel(
-                    "Experiment B", experiment_b, result_b
-                )
-            st.caption("Token, context pressure, and cost values are approximate estimates.")
-
-            st.subheader("Run summary")
-            st.table(comparison_setup_rows(experiment_a, experiment_b))
-            st.session_state["last_report_markdown"] = build_markdown_report(
-                experiment_a,
-                experiment_b,
-                result_a=result_a,
-                result_b=result_b,
-                status_a="Completed",
-                status_b="Completed",
-            )
+        if result_a is not None and result_b is not None:
             st.session_state["last_report_filename"] = "llm-lab-openai-comparison.md"
-        except RuntimeError as error:
-            st.error(str(error))
-            st.session_state["last_report_markdown"] = build_markdown_report(
-                experiment_a,
-                experiment_b,
-                status_a="Failed: run did not complete",
-                status_b="Not completed",
-            )
+        else:
             st.session_state["last_report_filename"] = "llm-lab-failed-comparison.md"
-        except Exception as error:
-            st.error(f"OpenAI API call failed: {error}")
-            st.session_state["last_report_markdown"] = build_markdown_report(
-                experiment_a,
-                experiment_b,
-                status_a="Failed: OpenAI API call did not complete",
-                status_b="Not completed",
-            )
-            st.session_state["last_report_filename"] = "llm-lab-failed-comparison.md"
+
+    render_model_outputs(experiment_a, experiment_b, result_a, result_b, status_a, status_b)
+    render_approximate_metrics(
+        experiment_a,
+        experiment_b,
+        result_a,
+        result_b,
+        status_a,
+        status_b,
+    )
+    insights = build_decision_intelligence(experiment_a, experiment_b, result_a, result_b)
+    render_decision_intelligence(insights)
+    run_summary = build_run_summary(
+        experiment_a,
+        experiment_b,
+        result_a,
+        result_b,
+        status_a,
+        status_b,
+    )
+    render_run_summary(run_summary)
+    st.session_state["last_report_markdown"] = build_markdown_report(
+        experiment_a,
+        experiment_b,
+        result_a=result_a,
+        result_b=result_b,
+        status_a=status_a,
+        status_b=status_b,
+        preset_name=st.session_state.get("last_applied_preset"),
+        insights=insights,
+        run_summary=run_summary,
+    )
 
 if "last_report_markdown" in st.session_state:
-    st.subheader("Export report")
+    st.subheader("Download")
     st.caption(
         "This Markdown report is generated locally from the current run and excludes API keys."
     )

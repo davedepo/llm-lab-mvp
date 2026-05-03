@@ -54,6 +54,7 @@ Implemented now:
 * Local environment loading from `.env`
 * Clear missing-key handling for `OPENAI_API_KEY`
 * Side-by-side OpenAI outputs
+* Deterministic Decision Intelligence guidance based on setup, run status, and approximate metrics
 * Approximate metrics for each OpenAI model:
   * latency
   * approximate input token estimate
@@ -73,7 +74,7 @@ Not implemented yet:
 * Cross-provider execution or comparison
 * Database or experiment history
 * PDF export or persistent saved reports
-* Full analyzer or difference explanation in the Streamlit app
+* LLM-as-judge evaluation or semantic difference explanation in the Streamlit app
 * Production-ready pricing, tokenization, or observability
 
 Anthropic, Google Gemini, Mistral, and Cohere are currently UI placeholders only. OpenAI is the only implemented execution provider.
@@ -89,6 +90,7 @@ This repository currently includes:
 * Streamlit MVP with OpenAI live testing and two-model comparison
 * Separate Streamlit configuration panels for Experiment A and Experiment B
 * Optional comparison presets and Markdown report export
+* Deterministic Decision Intelligence guidance for comparison decisions
 * Approximate latency, token, cost, and context pressure metrics
 * Example experiment configuration
 * Placeholder UI paths for Anthropic, Google Gemini, Mistral, and Cohere
@@ -190,9 +192,10 @@ After local setup:
 * Enter a system instruction and user prompt.
 * Select two different OpenAI preset models and run the experiment.
 * Confirm Model A and Model B outputs render side-by-side.
-* Confirm each model shows latency, approximate token counts, estimated cost, and approximate context pressure.
+* Confirm approximate metrics appear in their own section after model outputs.
+* Confirm Decision Intelligence appears and does not claim objective answer quality.
 * Apply each comparison preset and confirm it fills fields without running automatically.
-* Download the Markdown report after a run and confirm it excludes API keys.
+* Download the Markdown report after a run and confirm it includes Decision Intelligence and excludes API keys.
 * Select the same model for Model A and Model B and confirm the identical-configuration warning appears without blocking execution.
 * Select a placeholder provider such as Anthropic and confirm the app does not make a provider call.
 * Confirm no API key appears in the run summary, logs, screenshots, or committed files.
