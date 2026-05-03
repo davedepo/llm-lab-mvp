@@ -47,10 +47,10 @@ Implemented now:
 * Streamlit MVP at `app/streamlit_app.py`
 * OpenAI live testing through the official OpenAI Python package
 * OpenAI Model A vs Model B comparison in one run
-* Shared system instruction, user prompt, temperature, and max output tokens for both OpenAI models
-* Provider and model selection UI
+* Separate Experiment A and Experiment B setup panels
+* Independent provider, model, API key, system instruction, user prompt, temperature, and max output token controls for each experiment
 * Preset and custom model IDs for OpenAI comparison
-* Password-style API key field for bring-your-own-key runs
+* Password-style API key fields for bring-your-own-key runs
 * Local environment loading from `.env`
 * Clear missing-key handling for `OPENAI_API_KEY`
 * Side-by-side OpenAI outputs
@@ -61,6 +61,7 @@ Implemented now:
   * approximate total token estimate
   * approximate estimated cost
   * approximate context pressure
+* Lightweight comparison setup summary
 * Compact display-only run summary
 
 Not implemented yet:
@@ -84,6 +85,7 @@ This repository currently includes:
 * Interactive static simulator in `docs/index.html`
 * Root `index.html` simulator entrypoint
 * Streamlit MVP with OpenAI live testing and two-model comparison
+* Separate Streamlit configuration panels for Experiment A and Experiment B
 * Approximate latency, token, cost, and context pressure metrics
 * Example experiment configuration
 * Placeholder UI paths for Anthropic, Google Gemini, Mistral, and Cohere

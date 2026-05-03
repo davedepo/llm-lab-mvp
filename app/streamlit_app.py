@@ -47,7 +47,11 @@ MODEL_PRESETS = {
 
 load_dotenv()
 
-st.set_page_config(page_title="LLM Lab MVP")
+st.set_page_config(page_title="LLM Lab MVP", layout="wide")
+
+DEFAULT_SYSTEM_INSTRUCTION = (
+    "Return a concise, structured answer with decision-ready bullets."
+)
 
 
 def format_cost(value: float | None) -> str:
@@ -69,14 +73,16 @@ def model_metrics_rows(result, cost_value: str, context_pressure_value: str):
     ]
 
 
-def render_model_panel(label: str, model: str, result) -> tuple[str, str]:
+def render_model_panel(label: str, experiment: dict, result) -> tuple[str, str]:
     cost_value = format_cost(result.approximate_cost_usd)
     context_pressure_value = format_context_pressure(
         result.approximate_context_pressure_percent
     )
 
     with st.container(border=True):
-        st.markdown(f"**{label}: `{model}`**")
+        st.markdown(
+            f"**{label}: {experiment['provider']} / `{experiment['model']}`**"
+        )
         st.write(result.output_text)
         st.markdown("**Approximate metrics**")
         st.table(model_metrics_rows(result, cost_value, context_pressure_value))
@@ -91,111 +97,231 @@ def render_model_panel(label: str, model: str, result) -> tuple[str, str]:
 
     return cost_value, context_pressure_value
 
+
+def resolve_model(preset_model: str, custom_model: str) -> str:
+    return custom_model.strip() or preset_model
+
+
+def provided_label(value: str) -> str:
+    return "Provided" if value.strip() else "Not provided"
+
+
+def same_or_different(value_a, value_b) -> str:
+    return "Same" if value_a == value_b else "Different"
+
+
+def build_experiment_panel(label: str, key_prefix: str, default_model_index: int) -> dict:
+    with st.container(border=True):
+        st.subheader(label)
+        provider = st.selectbox("Provider", PROVIDERS, key=f"{key_prefix}_provider")
+
+        api_key = st.text_input("API key", type="password", key=f"{key_prefix}_api_key")
+        st.caption("Your API key is used only for this run and is not stored by this app.")
+
+        preset_model = st.selectbox(
+            "Preset model",
+            MODEL_PRESETS[provider],
+            index=min(default_model_index, len(MODEL_PRESETS[provider]) - 1),
+            key=f"{key_prefix}_preset_model",
+        )
+        custom_model = st.text_input("Custom model", key=f"{key_prefix}_custom_model")
+        st.caption(
+            "Custom model IDs must match the selected provider’s official model name. "
+            "Invalid, unavailable, or deprecated models may fail at runtime."
+        )
+
+        model = resolve_model(preset_model, custom_model)
+        st.caption(f"Selected model: `{model}`")
+
+        system_instruction = st.text_area(
+            "System instruction",
+            value=DEFAULT_SYSTEM_INSTRUCTION,
+            height=120,
+            key=f"{key_prefix}_system_instruction",
+        )
+        prompt = st.text_area(
+            "User prompt",
+            placeholder="Enter the prompt you want to experiment with...",
+            height=190,
+            key=f"{key_prefix}_prompt",
+        )
+
+        param_cols = st.columns(2)
+        with param_cols[0]:
+            temperature = st.slider(
+                "Temperature",
+                0.0,
+                2.0,
+                0.7,
+                0.1,
+                key=f"{key_prefix}_temperature",
+            )
+        with param_cols[1]:
+            max_output_tokens = st.slider(
+                "Max output tokens",
+                128,
+                4096,
+                1024,
+                128,
+                key=f"{key_prefix}_max_output_tokens",
+            )
+
+    return {
+        "label": label,
+        "provider": provider,
+        "api_key": api_key.strip() or None,
+        "model": model,
+        "system_instruction": system_instruction,
+        "prompt": prompt,
+        "temperature": temperature,
+        "max_output_tokens": max_output_tokens,
+    }
+
+
+def comparison_setup_rows(experiment_a: dict, experiment_b: dict):
+    return [
+        {
+            "Field": "Provider",
+            "Status": same_or_different(
+                experiment_a["provider"], experiment_b["provider"]
+            ),
+            "Experiment A": experiment_a["provider"],
+            "Experiment B": experiment_b["provider"],
+        },
+        {
+            "Field": "Model",
+            "Status": same_or_different(experiment_a["model"], experiment_b["model"]),
+            "Experiment A": experiment_a["model"],
+            "Experiment B": experiment_b["model"],
+        },
+        {
+            "Field": "System instruction",
+            "Status": same_or_different(
+                experiment_a["system_instruction"].strip(),
+                experiment_b["system_instruction"].strip(),
+            ),
+            "Experiment A": provided_label(experiment_a["system_instruction"]),
+            "Experiment B": provided_label(experiment_b["system_instruction"]),
+        },
+        {
+            "Field": "User prompt",
+            "Status": same_or_different(
+                experiment_a["prompt"].strip(), experiment_b["prompt"].strip()
+            ),
+            "Experiment A": provided_label(experiment_a["prompt"]),
+            "Experiment B": provided_label(experiment_b["prompt"]),
+        },
+        {
+            "Field": "Temperature",
+            "Status": same_or_different(
+                experiment_a["temperature"], experiment_b["temperature"]
+            ),
+            "Experiment A": f"{experiment_a['temperature']:.1f}",
+            "Experiment B": f"{experiment_b['temperature']:.1f}",
+        },
+        {
+            "Field": "Max output tokens",
+            "Status": same_or_different(
+                experiment_a["max_output_tokens"], experiment_b["max_output_tokens"]
+            ),
+            "Experiment A": str(experiment_a["max_output_tokens"]),
+            "Experiment B": str(experiment_b["max_output_tokens"]),
+        },
+    ]
+
+
+def experiments_are_identical(experiment_a: dict, experiment_b: dict) -> bool:
+    compared_fields = [
+        "provider",
+        "model",
+        "temperature",
+        "max_output_tokens",
+    ]
+    return all(experiment_a[field] == experiment_b[field] for field in compared_fields) and (
+        experiment_a["system_instruction"].strip()
+        == experiment_b["system_instruction"].strip()
+    ) and (experiment_a["prompt"].strip() == experiment_b["prompt"].strip())
+
+
+def unsupported_providers(experiment_a: dict, experiment_b: dict) -> list[str]:
+    return [
+        experiment["label"]
+        for experiment in [experiment_a, experiment_b]
+        if experiment["provider"] != "OpenAI"
+    ]
+
+
 st.title("LLM Lab MVP")
 st.caption(
     "A lightweight LLM experimentation tool for comparing prompts, models, "
     "parameters, and outputs across providers."
 )
 
-with st.sidebar:
-    st.header("Experiment Settings")
-    provider = st.selectbox("Provider", PROVIDERS)
-    run_api_key = st.text_input("API key", type="password")
-    st.caption("Your API key is used only for this run and is not stored by this app.")
-    if provider == "OpenAI":
-        preset_model_a = st.selectbox("Model A preset", MODEL_PRESETS["OpenAI"])
-        custom_model_a = st.text_input("Custom Model A")
-        preset_model_b = st.selectbox("Model B preset", MODEL_PRESETS["OpenAI"], index=1)
-        custom_model_b = st.text_input("Custom Model B")
-        st.caption(
-            "Custom model IDs must match the selected provider’s official model name. "
-            "Invalid, unavailable, or deprecated models may fail at runtime."
-        )
-        model_a = custom_model_a.strip() or preset_model_a
-        model_b = custom_model_b.strip() or preset_model_b
-    else:
-        preset_model = st.selectbox("Preset model", MODEL_PRESETS[provider])
-        custom_model = st.text_input("Custom model")
-        st.caption(
-            "Custom model IDs must match the selected provider’s official model name. "
-            "Invalid, unavailable, or deprecated models may fail at runtime."
-        )
-    temperature = st.slider("Temperature", 0.0, 2.0, 0.7, 0.1)
-    max_output_tokens = st.slider("Max output tokens", 128, 4096, 1024, 128)
+setup_cols = st.columns(2)
+with setup_cols[0]:
+    experiment_a = build_experiment_panel("Experiment A", "experiment_a", 0)
+with setup_cols[1]:
+    experiment_b = build_experiment_panel("Experiment B", "experiment_b", 1)
 
-system_instruction = st.text_area(
-    "System instruction",
-    value="Return a concise, structured answer with decision-ready bullets.",
-    height=110,
-)
-
-prompt = st.text_area(
-    "User prompt",
-    placeholder="Enter the prompt you want to experiment with...",
-    height=180,
-)
+st.subheader("Comparison setup summary")
+st.table(comparison_setup_rows(experiment_a, experiment_b))
 
 if st.button("Run experiment", type="primary"):
-    if provider != "OpenAI":
+    blocked_experiments = unsupported_providers(experiment_a, experiment_b)
+    if blocked_experiments:
         st.info(
             "Only OpenAI execution is supported in MVP v0.1. "
             "Other providers are UI placeholders for now."
         )
-    elif not prompt.strip():
-        st.warning("Enter a prompt before running an experiment.")
+        st.caption(
+            "Placeholder selected for: "
+            + ", ".join(blocked_experiments)
+            + ". No live API call was attempted."
+        )
+    elif not experiment_a["prompt"].strip() or not experiment_b["prompt"].strip():
+        st.warning("Enter a user prompt for both experiments before running.")
     else:
-        if model_a == model_b:
+        if experiments_are_identical(experiment_a, experiment_b):
             st.warning(
-                "Model A and Model B configurations are identical. Outputs may be "
+                "Experiment A and Experiment B configurations are identical. Outputs may be "
                 "similar unless randomness introduces variation."
             )
 
         try:
-            with st.spinner("Running Model A..."):
+            with st.spinner("Running Experiment A..."):
                 result_a = run_openai_experiment(
-                    prompt=prompt,
-                    model=model_a,
-                    temperature=temperature,
-                    max_output_tokens=max_output_tokens,
-                    api_key=run_api_key.strip() or None,
-                    system_instruction=system_instruction,
+                    prompt=experiment_a["prompt"],
+                    model=experiment_a["model"],
+                    temperature=experiment_a["temperature"],
+                    max_output_tokens=experiment_a["max_output_tokens"],
+                    api_key=experiment_a["api_key"],
+                    system_instruction=experiment_a["system_instruction"],
                 )
 
-            with st.spinner("Running Model B..."):
+            with st.spinner("Running Experiment B..."):
                 result_b = run_openai_experiment(
-                    prompt=prompt,
-                    model=model_b,
-                    temperature=temperature,
-                    max_output_tokens=max_output_tokens,
-                    api_key=run_api_key.strip() or None,
-                    system_instruction=system_instruction,
+                    prompt=experiment_b["prompt"],
+                    model=experiment_b["model"],
+                    temperature=experiment_b["temperature"],
+                    max_output_tokens=experiment_b["max_output_tokens"],
+                    api_key=experiment_b["api_key"],
+                    system_instruction=experiment_b["system_instruction"],
                 )
 
             st.subheader("Model comparison")
             comparison_cols = st.columns(2)
             with comparison_cols[0]:
                 cost_a, context_pressure_a = render_model_panel(
-                    "Model A", model_a, result_a
+                    "Experiment A", experiment_a, result_a
                 )
             with comparison_cols[1]:
                 cost_b, context_pressure_b = render_model_panel(
-                    "Model B", model_b, result_b
+                    "Experiment B", experiment_b, result_b
                 )
             st.caption("Token, context pressure, and cost values are approximate estimates.")
 
             st.subheader("Run summary")
-            st.markdown(
-                f"""
-| Field | Value |
-| --- | --- |
-| Provider | {provider} |
-| Model A | {model_a} |
-| Model B | {model_b} |
-| Temperature | {temperature:.1f} |
-| Max output tokens | {max_output_tokens} |
-| System instruction | {"Provided" if system_instruction.strip() else "Not provided"} |
-"""
-            )
+            st.table(comparison_setup_rows(experiment_a, experiment_b))
         except RuntimeError as error:
             st.error(str(error))
         except Exception as error:
