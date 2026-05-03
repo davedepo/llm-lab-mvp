@@ -50,29 +50,45 @@ def run_anthropic_experiment(
     if system_instruction and system_instruction.strip():
         request_args["system"] = system_instruction.strip()
 
-    start_time = perf_counter()
-    response = client.messages.create(**request_args)
-    latency_seconds = perf_counter() - start_time
+    try:
+        start_time = perf_counter()
+        response = client.messages.create(**request_args)
+        latency_seconds = perf_counter() - start_time
+    except Exception as e:
+        raise RuntimeError(f"Anthropic API call failed: {e}") from e
 
     output_text = extract_anthropic_text(response)
     if not output_text:
         raise RuntimeError("Anthropic returned a response without output text.")
 
-    input_text = "\n".join(
-        value for value in [system_instruction, prompt] if value and value.strip()
-    )
-    approximate_input_tokens = estimate_tokens(input_text)
-    approximate_output_tokens = estimate_tokens(output_text)
-    approximate_total_tokens = approximate_input_tokens + approximate_output_tokens
-    approximate_context_pressure_percent = estimate_context_pressure(
-        total_tokens=approximate_total_tokens,
-        model_name=model,
-    )
-    approximate_cost_usd = estimate_anthropic_cost_usd(
-        model=model,
-        input_tokens=approximate_input_tokens,
-        output_tokens=approximate_output_tokens,
-    )
+    try:
+        input_text = "\n".join(
+            value for value in [system_instruction, prompt] if value and value.strip()
+        )
+        approximate_input_tokens = estimate_tokens(input_text)
+        approximate_output_tokens = estimate_tokens(output_text)
+        approximate_total_tokens = approximate_input_tokens + approximate_output_tokens
+    except Exception:
+        approximate_input_tokens = 0
+        approximate_output_tokens = 0
+        approximate_total_tokens = 0
+
+    try:
+        approximate_context_pressure_percent = estimate_context_pressure(
+            total_tokens=approximate_total_tokens,
+            model_name=model,
+        )
+    except Exception:
+        approximate_context_pressure_percent = None
+
+    try:
+        approximate_cost_usd = estimate_anthropic_cost_usd(
+            model=model,
+            input_tokens=approximate_input_tokens,
+            output_tokens=approximate_output_tokens,
+        )
+    except Exception:
+        approximate_cost_usd = None
 
     return ProviderExperimentResult(
         output_text=output_text,

@@ -77,11 +77,11 @@ DEFAULT_SYSTEM_INSTRUCTION = (
 )
 
 COMPARISON_PRESETS = {
-    "Blank comparison": {
-        "description": "Start with empty prompts and default OpenAI model suggestions.",
+    "Custom Configuration": {
+        "description": "Start with empty prompts and cross-provider defaults.",
         "a": {
             "provider": "OpenAI",
-            "preset_model": "gpt-4.1-mini",
+            "preset_model": "gpt-4o-mini",
             "custom_model": "",
             "system_instruction": "",
             "prompt": "",
@@ -89,8 +89,8 @@ COMPARISON_PRESETS = {
             "max_output_tokens": 1024,
         },
         "b": {
-            "provider": "OpenAI",
-            "preset_model": "gpt-4.1",
+            "provider": "Anthropic",
+            "preset_model": "claude-3-5-haiku-latest",
             "custom_model": "",
             "system_instruction": "",
             "prompt": "",
@@ -98,11 +98,11 @@ COMPARISON_PRESETS = {
             "max_output_tokens": 1024,
         },
     },
-    "Same prompt, different models": {
-        "description": "Compare two OpenAI models on the same task and instruction.",
+    "Same Prompt, Different Models": {
+        "description": "Compare OpenAI and Anthropic models on the same task and instruction.",
         "a": {
             "provider": "OpenAI",
-            "preset_model": "gpt-4.1-mini",
+            "preset_model": "gpt-4o",
             "custom_model": "",
             "system_instruction": DEFAULT_SYSTEM_INSTRUCTION,
             "prompt": "Summarize the tradeoffs of building an internal LLM evaluation tool.",
@@ -110,8 +110,8 @@ COMPARISON_PRESETS = {
             "max_output_tokens": 1024,
         },
         "b": {
-            "provider": "OpenAI",
-            "preset_model": "gpt-4.1",
+            "provider": "Anthropic",
+            "preset_model": "claude-3-5-sonnet-latest",
             "custom_model": "",
             "system_instruction": DEFAULT_SYSTEM_INSTRUCTION,
             "prompt": "Summarize the tradeoffs of building an internal LLM evaluation tool.",
@@ -119,11 +119,11 @@ COMPARISON_PRESETS = {
             "max_output_tokens": 1024,
         },
     },
-    "Same model, different system instructions": {
+    "Same Model, Different System Instructions": {
         "description": "Keep the model and prompt fixed while changing only the instruction.",
         "a": {
             "provider": "OpenAI",
-            "preset_model": "gpt-4.1-mini",
+            "preset_model": "gpt-4o-mini",
             "custom_model": "",
             "system_instruction": "Return a concise executive summary with decision-ready bullets.",
             "prompt": "Evaluate whether a team should adopt an LLM experimentation workflow.",
@@ -132,7 +132,7 @@ COMPARISON_PRESETS = {
         },
         "b": {
             "provider": "OpenAI",
-            "preset_model": "gpt-4.1-mini",
+            "preset_model": "gpt-4o-mini",
             "custom_model": "",
             "system_instruction": "Return a detailed technical analysis with risks, mitigations, and implementation notes.",
             "prompt": "Evaluate whether a team should adopt an LLM experimentation workflow.",
@@ -140,11 +140,11 @@ COMPARISON_PRESETS = {
             "max_output_tokens": 1024,
         },
     },
-    "Concise vs detailed answer": {
+    "Concise vs Detailed Answer": {
         "description": "Compare a short answer style against a more expansive answer style.",
         "a": {
-            "provider": "OpenAI",
-            "preset_model": "gpt-4.1-mini",
+            "provider": "Anthropic",
+            "preset_model": "claude-3-5-sonnet-latest",
             "custom_model": "",
             "system_instruction": "Answer in no more than five concise bullets.",
             "prompt": "Explain how to evaluate two LLM responses for a product decision.",
@@ -152,8 +152,8 @@ COMPARISON_PRESETS = {
             "max_output_tokens": 768,
         },
         "b": {
-            "provider": "OpenAI",
-            "preset_model": "gpt-4.1-mini",
+            "provider": "Anthropic",
+            "preset_model": "claude-3-5-sonnet-latest",
             "custom_model": "",
             "system_instruction": "Answer with detailed reasoning, examples, and implementation guidance.",
             "prompt": "Explain how to evaluate two LLM responses for a product decision.",
@@ -161,11 +161,11 @@ COMPARISON_PRESETS = {
             "max_output_tokens": 1536,
         },
     },
-    "Creative vs analytical answer": {
+    "Creative vs Analytical Answer": {
         "description": "Compare a more imaginative response style against a structured analytical style.",
         "a": {
-            "provider": "OpenAI",
-            "preset_model": "gpt-4.1-mini",
+            "provider": "Anthropic",
+            "preset_model": "claude-3-5-haiku-latest",
             "custom_model": "",
             "system_instruction": "Generate creative, unconventional options while staying practical.",
             "prompt": "Propose ways to make an LLM experimentation tool more useful for product teams.",
@@ -174,7 +174,7 @@ COMPARISON_PRESETS = {
         },
         "b": {
             "provider": "OpenAI",
-            "preset_model": "gpt-4.1-mini",
+            "preset_model": "gpt-4o-mini",
             "custom_model": "",
             "system_instruction": "Analyze the problem systematically with criteria, tradeoffs, and risks.",
             "prompt": "Propose ways to make an LLM experimentation tool more useful for product teams.",
@@ -199,11 +199,11 @@ MATERIAL_RATIO_DIFF = 0.2
 
 
 def format_cost(value: float | None) -> str:
-    return f"${value:.6f}" if value is not None else "Pricing unavailable"
+    return f"${value:.6f}" if value is not None else "Metrics Unavailable for this Run: Pricing Data Not Found or API Error"
 
 
 def format_context_pressure(value: float | None) -> str:
-    return f"{value:.2f}%" if value is not None else "Context window unavailable"
+    return f"{value:.2f}%" if value is not None else "Metrics Unavailable for this Run: Context Window Data Not Found or API Error"
 
 
 def model_options(provider: str) -> list[str]:
@@ -211,12 +211,12 @@ def model_options(provider: str) -> list[str]:
 
 
 def display_model(model: str) -> str:
-    return model or "Custom model required"
+    return model or "Custom Model Required"
 
 
 def status_label(experiment: dict, result, status_message: str) -> str:
     if experiment["provider"] not in LIVE_PROVIDERS:
-        return "Unsupported provider placeholder"
+        return "Unsupported Provider Placeholder"
     if result is not None:
         return "Completed"
     return status_message
@@ -229,14 +229,14 @@ def candidate_metrics_rows(label: str, experiment: dict, result, status_message:
                 "Candidate": label,
                 "Provider": experiment["provider"],
                 "Model": display_model(experiment["model"]),
-                "Run status": status_label(experiment, result, status_message),
-                "Response time": "Unavailable",
-                "Est. input tokens": "Unavailable",
-                "Est. output tokens": "Unavailable",
-                "Est. total tokens": "Unavailable",
-                "Output length": "Unavailable",
-                "Est. cost": "Unavailable",
-                "Approx. context pressure": "Unavailable",
+                "Run Status": status_label(experiment, result, status_message),
+                "Response Time": "Unavailable",
+                "Est. Input Tokens": "Unavailable",
+                "Est. Output Tokens": "Unavailable",
+                "Est. Total Tokens": "Unavailable",
+                "Output Length": "Unavailable",
+                "Est. Cost": "Unavailable",
+                "Approx. Context Pressure": "Unavailable",
             }
         ]
 
@@ -245,14 +245,14 @@ def candidate_metrics_rows(label: str, experiment: dict, result, status_message:
             "Candidate": label,
             "Provider": experiment["provider"],
             "Model": display_model(experiment["model"]),
-            "Run status": status_label(experiment, result, status_message),
-            "Response time": f"{result.latency_seconds:.2f}s",
-            "Est. input tokens": str(result.approximate_input_tokens),
-            "Est. output tokens": str(result.approximate_output_tokens),
-            "Est. total tokens": str(result.approximate_total_tokens),
-            "Output length": f"{len(result.output_text)} chars",
-            "Est. cost": format_cost(result.approximate_cost_usd),
-            "Approx. context pressure": format_context_pressure(
+            "Run Status": status_label(experiment, result, status_message),
+            "Response Time": f"{result.latency_seconds:.2f}s",
+            "Est. Input Tokens": str(result.approximate_input_tokens),
+            "Est. Output Tokens": str(result.approximate_output_tokens),
+            "Est. Total Tokens": str(result.approximate_total_tokens),
+            "Output Length": f"{len(result.output_text)} chars",
+            "Est. Cost": format_cost(result.approximate_cost_usd),
+            "Approx. Context Pressure": format_context_pressure(
                 result.approximate_context_pressure_percent
             ),
         }
@@ -265,7 +265,7 @@ def render_output_card(label: str, experiment: dict, result, status_message: str
             f"**{label}: {experiment['provider']} / "
             f"`{display_model(experiment['model'])}`**"
         )
-        st.caption(f"Run status: {status_label(experiment, result, status_message)}")
+        st.caption(f"Run Status: {status_label(experiment, result, status_message)}")
 
         if experiment["provider"] not in LIVE_PROVIDERS:
             st.info(
@@ -304,11 +304,11 @@ def render_approximate_metrics(
 ) -> None:
     st.subheader("Approximate Metrics")
     st.caption(
-        "Definitions: Response time = elapsed provider call time | "
-        "Token usage = heuristic character estimate | "
-        "Est. cost = static placeholder estimation | "
-        "Context pressure = % of configured window | "
-        "Output length = generated text length"
+        "Definitions: Response Time = elapsed provider call time | "
+        "Token Usage = heuristic character estimate | "
+        "Est. Cost = static placeholder estimation | "
+        "Context Pressure = % of configured window | "
+        "Output Length = generated text length"
     )
 
     metrics_cols = st.columns(2)
@@ -317,18 +317,18 @@ def render_approximate_metrics(
     with metrics_cols[0]:
         with st.container(border=True):
             st.markdown(f"**{rows_a['Candidate']} / {rows_a['Provider']} / `{rows_a['Model']}`**")
-            st.markdown(f"*Status: {rows_a['Run status']}*")
+            st.markdown(f"*Status: {rows_a['Run Status']}*")
             for key, value in rows_a.items():
-                if key not in ["Candidate", "Provider", "Model", "Run status"]:
+                if key not in ["Candidate", "Provider", "Model", "Run Status"]:
                     st.markdown(f"**{key}:** {value}")
 
     rows_b = candidate_metrics_rows("Candidate B", experiment_b, result_b, status_b)[0]
     with metrics_cols[1]:
         with st.container(border=True):
             st.markdown(f"**{rows_b['Candidate']} / {rows_b['Provider']} / `{rows_b['Model']}`**")
-            st.markdown(f"*Status: {rows_b['Run status']}*")
+            st.markdown(f"*Status: {rows_b['Run Status']}*")
             for key, value in rows_b.items():
-                if key not in ["Candidate", "Provider", "Model", "Run status"]:
+                if key not in ["Candidate", "Provider", "Model", "Run Status"]:
                     st.markdown(f"**{key}:** {value}")
 
 
@@ -443,15 +443,9 @@ def build_decision_intelligence(
         if cheaper and cost_ratio is not None:
             cost_delta = abs(result_a.approximate_cost_usd - result_b.approximate_cost_usd)
             if cost_delta <= NEGLIGIBLE_COST_DIFF_USD:
-                insights.append(
-                    "**Cost Efficiency**: The estimated cost difference is negligible. Selection should "
-                    "primarily depend on output quality and structural fit."
-                )
+                insights.append("**Cost Efficiency**: The estimated cost difference is negligible. Selection should primarily depend on output quality and structural fit.")
             else:
-                insights.append(
-                    f"**Cost Efficiency**: {cheaper} appears more cost-efficient based on the estimated "
-                    "token rates."
-                )
+                insights.append(f"**Cost Efficiency**: {cheaper} appears more cost-efficient based on the estimated token rates.")
 
         token_heavier = higher_candidate(
             result_a.approximate_total_tokens,
@@ -463,10 +457,7 @@ def build_decision_intelligence(
         )
         if token_heavier and token_ratio is not None:
             if token_ratio >= MATERIAL_RATIO_DIFF:
-                insights.append(
-                    f"**Token Utilization**: {token_heavier} is more token-heavy, which may matter for "
-                    "cost-sensitive or high-volume use."
-                )
+                insights.append(f"**Token Utilization**: {token_heavier} is more token-heavy, which may matter for cost-sensitive or high-volume use.")
             else:
                 insights.append("**Token Utilization**: Both candidates have similar estimated total token usage.")
 
@@ -481,13 +472,8 @@ def build_decision_intelligence(
         if longer_output and output_ratio is not None:
             if output_ratio >= MATERIAL_RATIO_DIFF:
                 shorter_output = "Candidate A" if longer_output == "Candidate B" else "Candidate B"
-                insights.append(
-                    f"**Structural Difference**: {longer_output} produced a longer, more detailed response, while {shorter_output} was more concise."
-                )
-                insights.append(
-                    f"**Recommendation**: Use {shorter_output} for **Production/Extraction** workflows where brevity and predictable parsing are required. "
-                    f"Use {longer_output} for **Brainstorming/Exploration** workflows where depth and creative variation provide more value."
-                )
+                insights.append(f"**Structural Difference**: {longer_output} produced a longer, more detailed response, while {shorter_output} was more concise.")
+                insights.append(f"**Recommendation**: Use {shorter_output} for **Production/Extraction** workflows where brevity and predictable parsing are required. Use {longer_output} for **Brainstorming/Exploration** workflows where depth and creative variation provide more value.")
             else:
                 insights.append("**Structural Difference**: Both candidates produced similarly sized responses with comparable structural depth.")
 
@@ -501,18 +487,12 @@ def build_decision_intelligence(
         )
         if higher_context and context_ratio is not None:
             if context_ratio >= MATERIAL_RATIO_DIFF:
-                insights.append(
-                    f"**Context Pressure**: {higher_context} has higher context pressure, which may matter "
-                    "for long prompts or multi-turn workflows."
-                )
+                insights.append(f"**Context Pressure**: {higher_context} has higher context pressure, which may matter for long prompts or multi-turn workflows.")
             else:
                 insights.append("**Context Pressure**: Both candidates have similar estimated context pressure.")
 
     if setup_change_count(experiment_a, experiment_b) > 1:
-        insights.append(
-            "**Experiment Design Note**: This comparison changes multiple setup variables simultaneously, "
-            "so differences in output cannot be attributed to a single parameter alone."
-        )
+        insights.append("**Experiment Design Note**: This comparison changes multiple setup variables simultaneously, so differences in output cannot be attributed to a single parameter alone.")
 
     return insights
 
@@ -525,7 +505,7 @@ def render_decision_intelligence(insights: list[str]) -> None:
             "not an exact LLM judge."
         )
         for insight in insights:
-            st.markdown(f"- {insight}")
+            st.markdown(insight)
 
 
 def render_run_summary(summary: list[str]) -> None:
@@ -544,7 +524,7 @@ def resolve_model(preset_model: str, custom_model: str) -> str:
 
 
 def provided_label(value: str) -> str:
-    return "Provided" if value.strip() else "Not provided"
+    return "Provided" if value.strip() else "Not Provided"
 
 
 def same_or_different(value_a, value_b) -> str:
@@ -585,16 +565,16 @@ def experiment_config_markdown(label: str, experiment: dict) -> str:
             "",
             f"- Provider: {experiment['provider']}",
             f"- Model: {display_model(experiment['model'])}",
-            f"- Preset model selection: {experiment['preset_model']}",
+            f"- Preset Model Selection: {experiment['preset_model']}",
             f"- Temperature: {experiment['temperature']:.1f}",
-            f"- Max output tokens: {experiment['max_output_tokens']}",
-            f"- System instruction: {provided_label(experiment['system_instruction'])}",
-            f"- User prompt: {provided_label(experiment['prompt'])}",
+            f"- Max Output Tokens: {experiment['max_output_tokens']}",
+            f"- System Instruction: {provided_label(experiment['system_instruction'])}",
+            f"- User Prompt: {provided_label(experiment['prompt'])}",
             "",
-            "System instruction:",
+            "System Instruction:",
             markdown_block(experiment["system_instruction"]),
             "",
-            "User prompt:",
+            "User Prompt:",
             markdown_block(experiment["prompt"]),
         ]
     )
@@ -619,13 +599,13 @@ def comparison_summary_markdown(experiment_a: dict, experiment_b: dict) -> str:
         "",
         f"Comparison type: {comparison_type_statement(experiment_a, experiment_b)}",
         "",
-        "| Field | Status | Candidate A | Candidate B |",
+        "| Field | Status | Configuration A | Configuration B |",
         "| --- | --- | --- | --- |",
     ]
     for row in comparison_setup_rows(experiment_a, experiment_b):
         lines.append(
             f"| {row['Field']} | {row['Status']} | "
-            f"{row['Experiment A']} | {row['Experiment B']} |"
+            f"{row['Configuration A']} | {row['Configuration B']} |"
         )
     return "\n".join(lines)
 
@@ -646,10 +626,10 @@ def approximate_metrics_markdown(
         "text length. Unavailable means metadata is not configured for that model "
         "or the run did not complete.",
         "",
-        "| Candidate | Provider | Model | Run status | Est. input tokens | "
-        "Est. output tokens | Est. total tokens | Output length | "
-        "Response time | Est. cost | "
-        "Approx. context pressure |",
+        "| Candidate | Provider | Model | Run Status | Est. Input Tokens | "
+        "Est. Output Tokens | Est. Total Tokens | Output Length | "
+        "Response Time | Est. Cost | "
+        "Approx. Context Pressure |",
         "| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |",
     ]
     for row in candidate_metrics_rows(
@@ -657,10 +637,10 @@ def approximate_metrics_markdown(
     ) + candidate_metrics_rows("Candidate B", experiment_b, result_b, status_b):
         lines.append(
             f"| {row['Candidate']} | {row['Provider']} | {row['Model']} | "
-            f"{row['Run status']} | {row['Est. input tokens']} | "
-            f"{row['Est. output tokens']} | {row['Est. total tokens']} | "
-            f"{row['Output length']} | {row['Response time']} | "
-            f"{row['Est. cost']} | {row['Approx. context pressure']} |"
+            f"{row['Run Status']} | {row['Est. Input Tokens']} | "
+            f"{row['Est. Output Tokens']} | {row['Est. Total Tokens']} | "
+            f"{row['Output Length']} | {row['Response Time']} | "
+            f"{row['Est. Cost']} | {row['Approx. Context Pressure']} |"
         )
     return "\n".join(lines)
 
@@ -673,7 +653,7 @@ def decision_intelligence_markdown(insights: list[str]) -> str:
         "not an LLM judge.",
         "",
     ]
-    lines.extend(f"- {insight}" for insight in insights)
+    lines.extend(f"{insight}" for insight in insights)
     return "\n".join(lines)
 
 
@@ -690,7 +670,7 @@ def build_run_summary(
         f"Candidate A: {status_label(experiment_a, result_a, status_a)}",
         f"Candidate B: {status_label(experiment_b, result_b, status_b)}",
         "OpenAI and Anthropic are currently live execution providers.",
-        "Token, cost, and context pressure values are approximate.",
+        "Token, Cost, and Context Pressure values are approximate.",
     ]
 
     if unsupported:
@@ -751,7 +731,7 @@ def build_markdown_report(
             ),
             decision_intelligence_markdown(insights),
             run_summary_markdown(run_summary),
-            "Note: token, cost, context pressure, response time, and output length "
+            "Note: Token, Cost, Context Pressure, Response Time, and Output Length "
             "values are approximate or locally measured for this run.",
         ]
     )
@@ -762,8 +742,13 @@ def build_experiment_panel(label: str, key_prefix: str, default_model_index: int
         st.subheader(label)
         provider = st.selectbox("Provider", PROVIDERS, key=f"{key_prefix}_provider")
 
-        api_key = st.text_input("API key", type="password", key=f"{key_prefix}_api_key")
-        st.caption("Your API key is used only for this run and is not stored by this app.")
+        api_key = st.text_input(
+            "API Key",
+            type="password",
+            placeholder=f"Enter {provider} API Key here...",
+            key=f"{key_prefix}_api_key",
+        )
+        st.caption("Your API Key is used only for this run and is not stored by this app.")
 
         preset_model_key = f"{key_prefix}_preset_model"
         custom_model_key = f"{key_prefix}_custom_model"
@@ -776,27 +761,32 @@ def build_experiment_panel(label: str, key_prefix: str, default_model_index: int
             ]
 
         preset_model = st.selectbox(
-            "Preset model",
+            "Preset Model",
             provider_model_options,
             key=preset_model_key,
         )
-        custom_model = st.text_input("Custom model", key=custom_model_key)
+        custom_model = st.text_input(
+            "Custom Model",
+            placeholder="e.g., your-custom-model-id",
+            key=custom_model_key,
+        )
         st.caption(
             "Custom model IDs must match the selected provider’s official model name. "
             "Invalid, unavailable, or deprecated models may fail at runtime."
         )
 
         model = resolve_model(preset_model, custom_model)
-        st.caption(f"Selected model: `{display_model(model)}`")
+        st.caption(f"Selected Model: `{display_model(model)}`")
 
         system_instruction = st.text_area(
-            "System instruction",
+            "System Instruction",
+            placeholder="Enter optional system instructions...",
             height=120,
             key=f"{key_prefix}_system_instruction",
         )
         prompt = st.text_area(
-            "User prompt",
-            placeholder="Enter the prompt you want to experiment with...",
+            "User Prompt",
+            placeholder="Enter the prompt you want to test outputs with...",
             height=190,
             key=f"{key_prefix}_prompt",
         )
@@ -817,7 +807,7 @@ def build_experiment_panel(label: str, key_prefix: str, default_model_index: int
             st.caption(get_temperature_guidance(provider))
         with param_cols[1]:
             max_output_tokens = st.slider(
-                "Max output tokens",
+                "Max Output Tokens",
                 min_value=128,
                 max_value=4096,
                 step=128,
@@ -847,47 +837,47 @@ def comparison_setup_rows(experiment_a: dict, experiment_b: dict):
             "Status": same_or_different(
                 experiment_a["provider"], experiment_b["provider"]
             ),
-            "Experiment A": experiment_a["provider"],
-            "Experiment B": experiment_b["provider"],
+            "Configuration A": experiment_a["provider"],
+            "Configuration B": experiment_b["provider"],
         },
         {
             "Field": "Model",
             "Status": same_or_different(experiment_a["model"], experiment_b["model"]),
-            "Experiment A": display_model(experiment_a["model"]),
-            "Experiment B": display_model(experiment_b["model"]),
+            "Configuration A": display_model(experiment_a["model"]),
+            "Configuration B": display_model(experiment_b["model"]),
         },
         {
-            "Field": "System instruction",
+            "Field": "System Instruction",
             "Status": same_or_different(
                 experiment_a["system_instruction"].strip(),
                 experiment_b["system_instruction"].strip(),
             ),
-            "Experiment A": provided_label(experiment_a["system_instruction"]),
-            "Experiment B": provided_label(experiment_b["system_instruction"]),
+            "Configuration A": provided_label(experiment_a["system_instruction"]),
+            "Configuration B": provided_label(experiment_b["system_instruction"]),
         },
         {
-            "Field": "User prompt",
+            "Field": "User Prompt",
             "Status": same_or_different(
                 experiment_a["prompt"].strip(), experiment_b["prompt"].strip()
             ),
-            "Experiment A": provided_label(experiment_a["prompt"]),
-            "Experiment B": provided_label(experiment_b["prompt"]),
+            "Configuration A": provided_label(experiment_a["prompt"]),
+            "Configuration B": provided_label(experiment_b["prompt"]),
         },
         {
             "Field": "Temperature",
             "Status": same_or_different(
                 experiment_a["temperature"], experiment_b["temperature"]
             ),
-            "Experiment A": f"{experiment_a['temperature']:.1f}",
-            "Experiment B": f"{experiment_b['temperature']:.1f}",
+            "Configuration A": f"{experiment_a['temperature']:.1f}",
+            "Configuration B": f"{experiment_b['temperature']:.1f}",
         },
         {
-            "Field": "Max output tokens",
+            "Field": "Max Output Tokens",
             "Status": same_or_different(
                 experiment_a["max_output_tokens"], experiment_b["max_output_tokens"]
             ),
-            "Experiment A": str(experiment_a["max_output_tokens"]),
-            "Experiment B": str(experiment_b["max_output_tokens"]),
+            "Configuration A": str(experiment_a["max_output_tokens"]),
+            "Configuration B": str(experiment_b["max_output_tokens"]),
         },
     ]
 
@@ -940,9 +930,12 @@ def run_provider_candidate(experiment: dict):
 
 
 st.title("LLM Lab MVP")
-st.caption(
+st.markdown(
+    "<div style='font-size: 1.15rem; color: #4a5568; margin-bottom: 0.5rem;'>"
     "A lightweight LLM experimentation tool for comparing prompts, models, "
     "parameters, and outputs across providers."
+    "</div>",
+    unsafe_allow_html=True,
 )
 st.caption(
     "Presets are optional starting points. Reports are local Markdown downloads "
@@ -954,7 +947,7 @@ initialize_experiment_defaults("experiment_b", 1)
 
 st.subheader("Comparison Presets")
 selected_preset = st.selectbox(
-    "Select a template to pre-fill the configuration",
+    "Select a Template to Pre-fill the Configuration",
     list(COMPARISON_PRESETS.keys()),
     key="comparison_preset",
 )
@@ -973,32 +966,40 @@ with st.container(border=True):
 st.subheader("User Input")
 setup_cols = st.columns(2)
 with setup_cols[0]:
-    experiment_a = build_experiment_panel("Experiment A", "experiment_a", 0)
+    experiment_a = build_experiment_panel("Configuration A", "experiment_a", 0)
 with setup_cols[1]:
-    experiment_b = build_experiment_panel("Experiment B", "experiment_b", 1)
+    experiment_b = build_experiment_panel("Configuration B", "experiment_b", 1)
 
 st.subheader("Comparison Setup Summary")
 st.caption(comparison_type_statement(experiment_a, experiment_b))
 st.table(comparison_setup_rows(experiment_a, experiment_b))
 
-if st.button("Run experiment", type="primary"):
+action_cols = st.columns([2, 2, 8])
+with action_cols[0]:
+    run_pressed = st.button("Run Evaluation", type="primary", use_container_width=True)
+with action_cols[1]:
+    if st.button("Reset All", use_container_width=True):
+        st.session_state.clear()
+        st.rerun()
+
+if run_pressed:
     result_a = None
     result_b = None
-    status_a = "Not run"
-    status_b = "Not run"
+    status_a = "Not Run"
+    status_b = "Not Run"
     blocked_experiments = unsupported_providers(experiment_a, experiment_b)
     missing_custom_models = missing_custom_model_experiments(experiment_a, experiment_b)
 
     if missing_custom_models:
         status_a = (
-            "Not run: custom model ID required"
+            "Not Run: Custom Model ID Required"
             if experiment_a["label"] in missing_custom_models
-            else "Not run: comparison blocked by missing custom model"
+            else "Not Run: Comparison Blocked by Missing Custom Model"
         )
         status_b = (
-            "Not run: custom model ID required"
+            "Not Run: Custom Model ID Required"
             if experiment_b["label"] in missing_custom_models
-            else "Not run: comparison blocked by missing custom model"
+            else "Not Run: Comparison Blocked by Missing Custom Model"
         )
         st.warning(
             "Enter a custom model ID for: "
@@ -1008,14 +1009,14 @@ if st.button("Run experiment", type="primary"):
         st.session_state["last_report_filename"] = "llm-lab-missing-model.md"
     elif blocked_experiments:
         status_a = (
-            "Not run: provider placeholder"
+            "Not Run: Provider Placeholder"
             if experiment_a["provider"] not in LIVE_PROVIDERS
-            else "Not run: comparison blocked by placeholder provider"
+            else "Not Run: Comparison Blocked by Placeholder Provider"
         )
         status_b = (
-            "Not run: provider placeholder"
+            "Not Run: Provider Placeholder"
             if experiment_b["provider"] not in LIVE_PROVIDERS
-            else "Not run: comparison blocked by placeholder provider"
+            else "Not Run: Comparison Blocked by Placeholder Provider"
         )
         st.info(
             "Only OpenAI and Anthropic execution are supported in MVP v0.1. "
@@ -1028,37 +1029,33 @@ if st.button("Run experiment", type="primary"):
         )
         st.session_state["last_report_filename"] = "llm-lab-placeholder-comparison.md"
     elif not experiment_a["prompt"].strip() or not experiment_b["prompt"].strip():
-        status_a = "Not run: missing user prompt"
-        status_b = "Not run: missing user prompt"
+        status_a = "Not Run: Missing User Prompt"
+        status_b = "Not Run: Missing User Prompt"
         st.warning("Enter a user prompt for both experiments before running.")
     else:
         if experiments_are_identical(experiment_a, experiment_b):
             st.warning(
-                "Experiment A and Experiment B configurations are identical. Outputs may be "
+                "Configuration A and Configuration B are identical. Outputs may be "
                 "similar unless randomness introduces variation."
             )
 
-        with st.spinner("Running Experiment A..."):
+        with st.spinner("Running Configuration A..."):
             try:
                 result_a = run_provider_candidate(experiment_a)
                 status_a = "Completed"
             except RuntimeError as error:
                 status_a = str(error)
-                st.error(status_a)
-            except Exception:
-                status_a = f"Failed: {experiment_a['provider']} API call did not complete."
-                st.error(status_a)
+            except Exception as e:
+                status_a = f"Failed: {experiment_a['provider']} API call did not complete. ({e})"
 
-        with st.spinner("Running Experiment B..."):
+        with st.spinner("Running Configuration B..."):
             try:
                 result_b = run_provider_candidate(experiment_b)
                 status_b = "Completed"
             except RuntimeError as error:
                 status_b = str(error)
-                st.error(status_b)
-            except Exception:
-                status_b = f"Failed: {experiment_b['provider']} API call did not complete."
-                st.error(status_b)
+            except Exception as e:
+                status_b = f"Failed: {experiment_b['provider']} API call did not complete. ({e})"
 
         if result_a is not None and result_b is not None:
             st.session_state["last_report_filename"] = "llm-lab-live-comparison.md"
@@ -1103,7 +1100,7 @@ if "last_report_markdown" in st.session_state:
         "This Markdown report is generated locally from the current run and excludes API keys."
     )
     st.download_button(
-        "Download Markdown report",
+        "Download Markdown Report",
         data=st.session_state["last_report_markdown"],
         file_name=st.session_state.get(
             "last_report_filename", "llm-lab-comparison-report.md"
