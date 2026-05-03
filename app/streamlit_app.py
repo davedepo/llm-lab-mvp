@@ -492,7 +492,7 @@ def build_decision_intelligence(
                 insights.append("**Context Pressure**: Both candidates have similar estimated context pressure.")
 
     if setup_change_count(experiment_a, experiment_b) > 1:
-        insights.append("**Experiment Design Note**: This comparison changes multiple setup variables simultaneously, so differences in output cannot be attributed to a single parameter alone.")
+        insights.append("**Test Design Note**: This comparison changes multiple setup variables simultaneously, so differences in output cannot be attributed to a single parameter alone.")
 
     return insights
 
@@ -947,7 +947,7 @@ initialize_experiment_defaults("experiment_b", 1)
 
 st.subheader("Comparison Presets")
 selected_preset = st.selectbox(
-    "Select a Template to Pre-fill the Configuration",
+    "Select a template to pre-fill the configuration",
     list(COMPARISON_PRESETS.keys()),
     key="comparison_preset",
 )
