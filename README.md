@@ -63,6 +63,8 @@ Implemented now:
   * approximate context pressure
 * Lightweight comparison setup summary
 * Compact display-only run summary
+* Optional comparison presets for common OpenAI evaluation scenarios
+* Local Markdown report download after a run or placeholder-provider check
 
 Not implemented yet:
 
@@ -70,7 +72,7 @@ Not implemented yet:
 * Google Gemini, Mistral, or Cohere live calls
 * Cross-provider execution or comparison
 * Database or experiment history
-* Export functionality
+* PDF export or persistent saved reports
 * Full analyzer or difference explanation in the Streamlit app
 * Production-ready pricing, tokenization, or observability
 
@@ -86,6 +88,7 @@ This repository currently includes:
 * Root `index.html` simulator entrypoint
 * Streamlit MVP with OpenAI live testing and two-model comparison
 * Separate Streamlit configuration panels for Experiment A and Experiment B
+* Optional comparison presets and Markdown report export
 * Approximate latency, token, cost, and context pressure metrics
 * Example experiment configuration
 * Placeholder UI paths for Anthropic, Google Gemini, Mistral, and Cohere
@@ -188,6 +191,8 @@ After local setup:
 * Select two different OpenAI preset models and run the experiment.
 * Confirm Model A and Model B outputs render side-by-side.
 * Confirm each model shows latency, approximate token counts, estimated cost, and approximate context pressure.
+* Apply each comparison preset and confirm it fills fields without running automatically.
+* Download the Markdown report after a run and confirm it excludes API keys.
 * Select the same model for Model A and Model B and confirm the identical-configuration warning appears without blocking execution.
 * Select a placeholder provider such as Anthropic and confirm the app does not make a provider call.
 * Confirm no API key appears in the run summary, logs, screenshots, or committed files.
@@ -223,7 +228,7 @@ Deferred and planned:
 * More accurate token and cost tracking
 * Analyzer and difference explanation implementation
 * Experiment history
-* Exportable results
+* PDF export and persistent saved reports
 * GitHub Pages repair for the static simulator
 
 ---
