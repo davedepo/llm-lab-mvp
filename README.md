@@ -1,5 +1,5 @@
 ![Status](https://img.shields.io/badge/status-MVP-blue)
-![Demo](https://img.shields.io/badge/demo-live-green)
+![Simulator](https://img.shields.io/badge/simulator-static-lightgrey)
 
 # llm-lab-mvp
 
@@ -7,15 +7,15 @@
 
 > Public release: static simulator + Streamlit MVP
 
-> Status: OpenAI live testing is currently implemented. Anthropic is currently placeholder-only.
+> Status: OpenAI Model A vs Model B comparison is implemented in Streamlit. Other providers are UI placeholders.
 
 ---
 
-## Try the product experience
+## Product Experience
 
-👉 [Launch the live simulator](https://davedepo.github.io/llm-lab-mvp/)
+The active MVP is the local Streamlit app at `app/streamlit_app.py`.
 
-The GitHub Pages simulator demonstrates the intended product workflow. The Streamlit app provides the current live OpenAI MVP.
+The static HTML simulator in `docs/index.html` is the original concept demo. It preserves the intended product workflow and visual direction, but it is not the primary active app while GitHub Pages repair is deferred.
 
 ---
 
@@ -43,29 +43,37 @@ It is designed for:
 
 Implemented now:
 
-* Static HTML simulator available through GitHub Pages
-* Streamlit app shell at `app/streamlit_app.py`
+* Static HTML simulator preserved in `docs/index.html`
+* Streamlit MVP at `app/streamlit_app.py`
 * OpenAI live testing through the official OpenAI Python package
+* OpenAI Model A vs Model B comparison in one run
+* Shared system instruction, user prompt, temperature, and max output tokens for both OpenAI models
+* Provider and model selection UI
+* Preset and custom model IDs for OpenAI comparison
+* Password-style API key field for bring-your-own-key runs
 * Local environment loading from `.env`
 * Clear missing-key handling for `OPENAI_API_KEY`
-* Simple prompt input and controls for provider, model, temperature, and max output tokens
-* Basic metrics for OpenAI runs:
+* Side-by-side OpenAI outputs
+* Approximate metrics for each OpenAI model:
   * latency
   * approximate input token estimate
   * approximate output token estimate
   * approximate total token estimate
   * approximate estimated cost
+  * approximate context pressure
+* Compact display-only run summary
 
 Not implemented yet:
 
 * Anthropic live calls
-* Multi-provider comparison
+* Google Gemini, Mistral, or Cohere live calls
+* Cross-provider execution or comparison
 * Database or experiment history
 * Export functionality
 * Full analyzer or difference explanation in the Streamlit app
 * Production-ready pricing, tokenization, or observability
 
-Anthropic is currently placeholder-only. Multi-provider comparison is planned, not yet implemented.
+Anthropic, Google Gemini, Mistral, and Cohere are currently UI placeholders only. OpenAI is the only implemented execution provider.
 
 ---
 
@@ -74,11 +82,11 @@ Anthropic is currently placeholder-only. Multi-provider comparison is planned, n
 This repository currently includes:
 
 * Interactive static simulator in `docs/index.html`
-* GitHub Pages demo
-* Streamlit MVP with OpenAI live testing
-* Approximate latency, token, and cost metrics
+* Root `index.html` simulator entrypoint
+* Streamlit MVP with OpenAI live testing and two-model comparison
+* Approximate latency, token, cost, and context pressure metrics
 * Example experiment configuration
-* Placeholder Anthropic UI path for future work
+* Placeholder UI paths for Anthropic, Google Gemini, Mistral, and Cohere
 
 ---
 
@@ -97,10 +105,11 @@ This repository currently includes:
 
 ```bash
 app/         → Streamlit MVP and provider wrapper
-docs/        → simulator (live demo)
+docs/        → static simulator concept demo
 assets/      → screenshots
 examples/    → experiment configs
 src/         → legacy placeholder
+index.html   → root static simulator entrypoint
 ```
 
 ---
@@ -119,7 +128,7 @@ The simulator demonstrates:
 
 ## Run Locally
 
-OpenAI is the first supported real provider in the Streamlit app. Anthropic is currently placeholder-only.
+OpenAI is the only supported execution provider in the Streamlit app. Other providers are visible as UI placeholders only.
 
 ```bash
 git clone https://github.com/davedepo/llm-lab-mvp.git
@@ -131,7 +140,12 @@ cp .env.example .env
 streamlit run app/streamlit_app.py
 ```
 
-Add your OpenAI key locally in `.env` before running an OpenAI experiment:
+You can provide an OpenAI API key in either place:
+
+* Enter it in the Streamlit password field for the current run only.
+* Add it locally to `.env` for repeated local testing.
+
+Example `.env`:
 
 ```bash
 OPENAI_API_KEY=your_openai_key_here
@@ -149,7 +163,7 @@ Do not commit `.env`.
 | `OPENAI_API_KEY`    | Required for OpenAI live tests |
 | `ANTHROPIC_API_KEY` | Placeholder for future support |
 
-API keys are read locally from environment variables. `.env.example` is only for placeholders.
+The Streamlit UI also accepts a password-style API key for bring-your-own-key testing. Keys entered in the UI are used only for the current run and are not stored by the app. `.env.example` is only for placeholder variable names.
 
 ---
 
@@ -157,7 +171,24 @@ API keys are read locally from environment variables. `.env.example` is only for
 
 Metrics are approximate.
 
-Token estimates use a simple heuristic rather than a tokenizer dependency. Estimated cost uses static placeholder pricing constants in `app/metrics.py`; review and update those constants before relying on cost numbers for budgeting or reporting.
+Token estimates use a simple heuristic rather than a tokenizer dependency. Estimated cost and context pressure use static placeholder constants in `app/metrics.py`; review and update those constants before relying on cost or context numbers for budgeting, reporting, or model-limit decisions.
+
+---
+
+## Manual MVP Test Checklist
+
+After local setup:
+
+* Start the app with `streamlit run app/streamlit_app.py`.
+* Select `OpenAI` as the provider.
+* Enter an OpenAI API key in the password field, or set `OPENAI_API_KEY` in `.env`.
+* Enter a system instruction and user prompt.
+* Select two different OpenAI preset models and run the experiment.
+* Confirm Model A and Model B outputs render side-by-side.
+* Confirm each model shows latency, approximate token counts, estimated cost, and approximate context pressure.
+* Select the same model for Model A and Model B and confirm the identical-configuration warning appears without blocking execution.
+* Select a placeholder provider such as Anthropic and confirm the app does not make a provider call.
+* Confirm no API key appears in the run summary, logs, screenshots, or committed files.
 
 ---
 
@@ -182,15 +213,16 @@ It helps answer:
 
 ## Roadmap
 
-Planned next steps:
+Deferred and planned:
 
 * Anthropic provider integration
-* Multi-provider comparison
+* Google Gemini, Mistral, and Cohere provider integrations
+* Cross-provider comparison
 * More accurate token and cost tracking
-* Context pressure metrics in the Streamlit app
 * Analyzer and difference explanation implementation
 * Experiment history
 * Exportable results
+* GitHub Pages repair for the static simulator
 
 ---
 
@@ -198,7 +230,8 @@ Planned next steps:
 
 * Do not commit `.env`
 * Use `.env.example` only for placeholder variable names
-* API keys are read locally from environment variables
+* API keys can be read locally from environment variables
+* API keys entered in the Streamlit UI are used only for that run and are not stored by the app
 * Do not paste real API keys into issues, docs, commits, or screenshots
 
 ---
