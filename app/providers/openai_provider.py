@@ -27,12 +27,16 @@ def run_openai_experiment(
     model: str,
     temperature: float,
     max_output_tokens: int,
+    api_key: str | None = None,
 ) -> OpenAIExperimentResult:
-    api_key = os.getenv("OPENAI_API_KEY")
-    if not api_key:
-        raise RuntimeError("OPENAI_API_KEY is missing. Add it to your .env file.")
+    resolved_api_key = api_key or os.getenv("OPENAI_API_KEY")
+    if not resolved_api_key:
+        raise RuntimeError(
+            "OPENAI_API_KEY is missing. Enter an OpenAI API key for this run "
+            "or add it to your .env file."
+        )
 
-    client = OpenAI(api_key=api_key)
+    client = OpenAI(api_key=resolved_api_key)
     start_time = perf_counter()
     response = client.responses.create(
         model=model,
