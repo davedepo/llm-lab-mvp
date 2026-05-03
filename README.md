@@ -7,7 +7,7 @@
 
 > Public release: static simulator + Streamlit MVP
 
-> Status: OpenAI Model A vs Model B comparison is implemented in Streamlit. Other providers are UI placeholders.
+> Status: OpenAI and Anthropic comparison is implemented in Streamlit. Gemini, Mistral, and Cohere are UI placeholders.
 
 ---
 
@@ -46,38 +46,38 @@ Implemented now:
 * Static HTML simulator preserved in `docs/index.html`
 * Streamlit MVP at `app/streamlit_app.py`
 * OpenAI live testing through the official OpenAI Python package
-* OpenAI Model A vs Model B comparison in one run
+* Anthropic live testing through the official Anthropic Python package
+* OpenAI and Anthropic Model A vs Model B comparison in one run
 * Separate Experiment A and Experiment B setup panels
 * Independent provider, model, API key, system instruction, user prompt, temperature, and max output token controls for each experiment
-* Preset and custom model IDs for OpenAI comparison
+* Preset and custom model IDs for OpenAI and Anthropic comparison
 * Password-style API key fields for bring-your-own-key runs
 * Local environment loading from `.env`
-* Clear missing-key handling for `OPENAI_API_KEY`
-* Side-by-side OpenAI outputs
+* Clear missing-key handling for `OPENAI_API_KEY` and `ANTHROPIC_API_KEY`
+* Side-by-side provider outputs
 * Deterministic Decision Intelligence guidance based on setup, run status, and approximate metrics
-* Approximate metrics for each OpenAI model:
+* Approximate metrics for each live model:
   * latency
   * approximate input token estimate
   * approximate output token estimate
   * approximate total token estimate
+  * output length
   * approximate estimated cost
   * approximate context pressure
 * Lightweight comparison setup summary
 * Compact display-only run summary
-* Optional comparison presets for common OpenAI evaluation scenarios
+* Optional comparison presets for common evaluation scenarios
 * Local Markdown report download after a run or placeholder-provider check
 
 Not implemented yet:
 
-* Anthropic live calls
 * Google Gemini, Mistral, or Cohere live calls
-* Cross-provider execution or comparison
 * Database or experiment history
 * PDF export or persistent saved reports
 * LLM-as-judge evaluation or semantic difference explanation in the Streamlit app
 * Production-ready pricing, tokenization, or observability
 
-Anthropic, Google Gemini, Mistral, and Cohere are currently UI placeholders only. OpenAI is the only implemented execution provider.
+Google Gemini, Mistral, and Cohere are currently UI placeholders only. OpenAI and Anthropic are the implemented execution providers.
 
 ---
 
@@ -87,13 +87,13 @@ This repository currently includes:
 
 * Interactive static simulator in `docs/index.html`
 * Root `index.html` simulator entrypoint
-* Streamlit MVP with OpenAI live testing and two-model comparison
+* Streamlit MVP with OpenAI and Anthropic live testing and two-model comparison
 * Separate Streamlit configuration panels for Experiment A and Experiment B
 * Optional comparison presets and Markdown report export
 * Deterministic Decision Intelligence guidance for comparison decisions
 * Approximate latency, token, cost, and context pressure metrics
 * Example experiment configuration
-* Placeholder UI paths for Anthropic, Google Gemini, Mistral, and Cohere
+* Placeholder UI paths for Google Gemini, Mistral, and Cohere
 
 ---
 
@@ -135,7 +135,7 @@ The simulator demonstrates:
 
 ## Run Locally
 
-OpenAI is the only supported execution provider in the Streamlit app. Other providers are visible as UI placeholders only.
+OpenAI and Anthropic are the supported execution providers in the Streamlit app. Gemini, Mistral, and Cohere are visible as UI placeholders only.
 
 ```bash
 git clone https://github.com/davedepo/llm-lab-mvp.git
@@ -147,16 +147,16 @@ cp .env.example .env
 streamlit run app/streamlit_app.py
 ```
 
-You can provide an OpenAI API key in either place:
+You can provide OpenAI and Anthropic API keys in either place:
 
-* Enter it in the Streamlit password field for the current run only.
-* Add it locally to `.env` for repeated local testing.
+* Enter a key in the Streamlit password field for the current run only.
+* Add keys locally to `.env` for repeated local testing.
 
 Example `.env`:
 
 ```bash
 OPENAI_API_KEY=your_openai_key_here
-ANTHROPIC_API_KEY=
+ANTHROPIC_API_KEY=your_anthropic_key_here
 ```
 
 Do not commit `.env`.
@@ -168,9 +168,21 @@ Do not commit `.env`.
 | Variable            | Status                         |
 | ------------------- | ------------------------------ |
 | `OPENAI_API_KEY`    | Required for OpenAI live tests |
-| `ANTHROPIC_API_KEY` | Placeholder for future support |
+| `ANTHROPIC_API_KEY` | Required for Anthropic live tests |
 
 The Streamlit UI also accepts a password-style API key for bring-your-own-key testing. Keys entered in the UI are used only for the current run and are not stored by the app. `.env.example` is only for placeholder variable names.
+
+---
+
+## Model Selection
+
+Each experiment can use a preset model or a custom model ID.
+
+If a custom model ID is entered, the preset model selector is treated as `Other` and the custom model ID is sent to the selected provider. The app never sends the literal value `Other` to a provider. If `Other` is selected, a custom model ID is required before live execution.
+
+Known custom model IDs can still receive approximate cost and context pressure estimates when metadata exists in `app/metrics.py`. Unknown custom models can still run, but pricing and context pressure display as unavailable until metadata is added.
+
+Anthropic currently includes `claude-sonnet-4-6`, `claude-3-5-sonnet-latest`, and `claude-3-5-haiku-latest` as preset options.
 
 ---
 
@@ -180,6 +192,14 @@ Metrics are approximate.
 
 Token estimates use a simple heuristic rather than a tokenizer dependency. Estimated cost and context pressure use static placeholder constants in `app/metrics.py`; review and update those constants before relying on cost or context numbers for budgeting, reporting, or model-limit decisions.
 
+Metric definitions:
+
+* Response time: elapsed provider call time for the current run
+* Token usage: approximate input, output, and total token estimates
+* Estimated cost: static pricing metadata multiplied by approximate token estimates
+* Context pressure: approximate total tokens divided by configured context window
+* Output length: generated text length in characters
+
 ---
 
 ## Manual MVP Test Checklist
@@ -187,17 +207,22 @@ Token estimates use a simple heuristic rather than a tokenizer dependency. Estim
 After local setup:
 
 * Start the app with `streamlit run app/streamlit_app.py`.
-* Select `OpenAI` as the provider.
-* Enter an OpenAI API key in the password field, or set `OPENAI_API_KEY` in `.env`.
+* Select `OpenAI` or `Anthropic` as the provider.
+* Enter provider API keys in the password fields, or set `OPENAI_API_KEY` / `ANTHROPIC_API_KEY` in `.env`.
 * Enter a system instruction and user prompt.
-* Select two different OpenAI preset models and run the experiment.
+* Run OpenAI vs OpenAI, OpenAI vs Anthropic, Anthropic vs OpenAI, and Anthropic vs Anthropic comparisons when credentials are available.
+* Confirm Anthropic preset `claude-sonnet-4-6` works.
+* Enter `claude-sonnet-4-6` as a custom Anthropic model and confirm the selector displays `Other`.
 * Confirm Model A and Model B outputs render side-by-side.
 * Confirm approximate metrics appear in their own section after model outputs.
+* Confirm estimated cost and approximate context pressure appear for known custom model IDs with metadata.
+* Confirm unknown custom model IDs can run but show unavailable pricing/context metadata.
+* Confirm the temperature helper note appears: lower values are focused/repeatable, higher values are creative/varied.
 * Confirm Decision Intelligence appears and does not claim objective answer quality.
 * Apply each comparison preset and confirm it fills fields without running automatically.
 * Download the Markdown report after a run and confirm it includes Decision Intelligence and excludes API keys.
 * Select the same model for Model A and Model B and confirm the identical-configuration warning appears without blocking execution.
-* Select a placeholder provider such as Anthropic and confirm the app does not make a provider call.
+* Select a placeholder provider such as Gemini, Mistral, or Cohere and confirm the app does not make a provider call.
 * Confirm no API key appears in the run summary, logs, screenshots, or committed files.
 
 ---
@@ -225,9 +250,8 @@ It helps answer:
 
 Deferred and planned:
 
-* Anthropic provider integration
 * Google Gemini, Mistral, and Cohere provider integrations
-* Cross-provider comparison
+* Broader cross-provider comparison beyond OpenAI and Anthropic
 * More accurate token and cost tracking
 * Analyzer and difference explanation implementation
 * Experiment history

@@ -26,6 +26,21 @@ OPENAI_PRICING_USD_PER_1M_TOKENS = {
     },
 }
 
+ANTHROPIC_PRICING_USD_PER_1M_TOKENS = {
+    "claude-sonnet-4-6": {
+        "input": 3.00,
+        "output": 15.00,
+    },
+    "claude-3-5-sonnet-latest": {
+        "input": 3.00,
+        "output": 15.00,
+    },
+    "claude-3-5-haiku-latest": {
+        "input": 0.80,
+        "output": 4.00,
+    },
+}
+
 
 # Approximate context windows for models exposed in the Streamlit selector.
 MODEL_CONTEXT_WINDOWS = {
@@ -34,6 +49,9 @@ MODEL_CONTEXT_WINDOWS = {
     "gpt-4o-mini": 128_000,
     "gpt-4o": 128_000,
     "o4-mini": 200_000,
+    "claude-sonnet-4-6": 200_000,
+    "claude-3-5-sonnet-latest": 200_000,
+    "claude-3-5-haiku-latest": 200_000,
 }
 
 
@@ -50,6 +68,20 @@ def estimate_openai_cost_usd(
     output_tokens: int,
 ) -> float | None:
     pricing = OPENAI_PRICING_USD_PER_1M_TOKENS.get(model)
+    if pricing is None:
+        return None
+
+    input_cost = (input_tokens / 1_000_000) * pricing["input"]
+    output_cost = (output_tokens / 1_000_000) * pricing["output"]
+    return input_cost + output_cost
+
+
+def estimate_anthropic_cost_usd(
+    model: str,
+    input_tokens: int,
+    output_tokens: int,
+) -> float | None:
+    pricing = ANTHROPIC_PRICING_USD_PER_1M_TOKENS.get(model)
     if pricing is None:
         return None
 
