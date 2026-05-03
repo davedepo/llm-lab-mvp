@@ -5,6 +5,7 @@ import streamlit as st
 
 from providers.anthropic_provider import run_anthropic_experiment
 from providers.openai_provider import run_openai_experiment
+from providers.temperature_helper import get_max_temperature, get_temperature_guidance
 
 
 PROVIDERS = ["OpenAI", "Anthropic", "Google Gemini", "Mistral", "Cohere"]
@@ -51,6 +52,25 @@ MODEL_PRESETS = {
 load_dotenv()
 
 st.set_page_config(page_title="LLM Lab MVP", layout="wide")
+
+st.markdown(
+    """
+    <style>
+    /* Enterprise Blue Theme UI Components */
+    :root { --primary-color: #0066cc; }
+    .stButton > button[kind="primary"] {
+        background-color: #0066cc !important;
+        color: white !important;
+        border-color: #0066cc !important;
+    }
+    .stButton > button[kind="primary"]:hover {
+        background-color: #0052a3 !important;
+        border-color: #0052a3 !important;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True
+)
 
 DEFAULT_SYSTEM_INSTRUCTION = (
     "Return a concise, structured answer with decision-ready bullets."
@@ -284,20 +304,32 @@ def render_approximate_metrics(
 ) -> None:
     st.subheader("Approximate Metrics")
     st.caption(
-        "Token, cost, and context pressure values are approximate local estimates. "
-        "Unsupported or failed runs do not produce live metrics."
+        "Definitions: Response time = elapsed provider call time | "
+        "Token usage = heuristic character estimate | "
+        "Est. cost = static placeholder estimation | "
+        "Context pressure = % of configured window | "
+        "Output length = generated text length"
     )
-    st.table(
-        candidate_metrics_rows("Candidate A", experiment_a, result_a, status_a)
-        + candidate_metrics_rows("Candidate B", experiment_b, result_b, status_b)
-    )
-    st.caption(
-        "Definitions: response time is elapsed provider call time; token usage is "
-        "estimated with a simple character heuristic; estimated cost uses static "
-        "placeholder pricing; context pressure estimates share of configured context "
-        "window used; output length is generated text length. Unavailable means "
-        "metadata is not configured for that model or the run did not complete."
-    )
+
+    metrics_cols = st.columns(2)
+
+    rows_a = candidate_metrics_rows("Candidate A", experiment_a, result_a, status_a)[0]
+    with metrics_cols[0]:
+        with st.container(border=True):
+            st.markdown(f"**{rows_a['Candidate']} / {rows_a['Provider']} / `{rows_a['Model']}`**")
+            st.markdown(f"*Status: {rows_a['Run status']}*")
+            for key, value in rows_a.items():
+                if key not in ["Candidate", "Provider", "Model", "Run status"]:
+                    st.markdown(f"**{key}:** {value}")
+
+    rows_b = candidate_metrics_rows("Candidate B", experiment_b, result_b, status_b)[0]
+    with metrics_cols[1]:
+        with st.container(border=True):
+            st.markdown(f"**{rows_b['Candidate']} / {rows_b['Provider']} / `{rows_b['Model']}`**")
+            st.markdown(f"*Status: {rows_b['Run status']}*")
+            for key, value in rows_b.items():
+                if key not in ["Candidate", "Provider", "Model", "Run status"]:
+                    st.markdown(f"**{key}:** {value}")
 
 
 def ratio_difference(value_a: float | int | None, value_b: float | int | None):
@@ -412,13 +444,13 @@ def build_decision_intelligence(
             cost_delta = abs(result_a.approximate_cost_usd - result_b.approximate_cost_usd)
             if cost_delta <= NEGLIGIBLE_COST_DIFF_USD:
                 insights.append(
-                    "The estimated cost difference is negligible, so selection should "
-                    "primarily depend on output fit."
+                    "**Cost Efficiency**: The estimated cost difference is negligible. Selection should "
+                    "primarily depend on output quality and structural fit."
                 )
             else:
                 insights.append(
-                    f"{cheaper} appears more cost-efficient based on the estimated "
-                    "token and cost calculations."
+                    f"**Cost Efficiency**: {cheaper} appears more cost-efficient based on the estimated "
+                    "token rates."
                 )
 
         token_heavier = higher_candidate(
@@ -432,11 +464,11 @@ def build_decision_intelligence(
         if token_heavier and token_ratio is not None:
             if token_ratio >= MATERIAL_RATIO_DIFF:
                 insights.append(
-                    f"{token_heavier} is more token-heavy, which may matter for "
+                    f"**Token Utilization**: {token_heavier} is more token-heavy, which may matter for "
                     "cost-sensitive or high-volume use."
                 )
             else:
-                insights.append("Both candidates have similar estimated total token usage.")
+                insights.append("**Token Utilization**: Both candidates have similar estimated total token usage.")
 
         longer_output = higher_candidate(
             result_a.approximate_output_tokens,
@@ -448,12 +480,16 @@ def build_decision_intelligence(
         )
         if longer_output and output_ratio is not None:
             if output_ratio >= MATERIAL_RATIO_DIFF:
+                shorter_output = "Candidate A" if longer_output == "Candidate B" else "Candidate B"
                 insights.append(
-                    f"{longer_output} produced a longer response and may be better "
-                    "for exploratory use, but it may be more expensive at scale."
+                    f"**Structural Difference**: {longer_output} produced a longer, more detailed response, while {shorter_output} was more concise."
+                )
+                insights.append(
+                    f"**Recommendation**: Use {shorter_output} for **Production/Extraction** workflows where brevity and predictable parsing are required. "
+                    f"Use {longer_output} for **Brainstorming/Exploration** workflows where depth and creative variation provide more value."
                 )
             else:
-                insights.append("Both candidates produced similarly sized responses.")
+                insights.append("**Structural Difference**: Both candidates produced similarly sized responses with comparable structural depth.")
 
         higher_context = higher_candidate(
             result_a.approximate_context_pressure_percent,
@@ -466,22 +502,16 @@ def build_decision_intelligence(
         if higher_context and context_ratio is not None:
             if context_ratio >= MATERIAL_RATIO_DIFF:
                 insights.append(
-                    f"{higher_context} has higher context pressure, which may matter "
+                    f"**Context Pressure**: {higher_context} has higher context pressure, which may matter "
                     "for long prompts or multi-turn workflows."
                 )
             else:
-                insights.append("Both candidates have similar estimated context pressure.")
-
-        if not insights:
-            insights.append(
-                "The approximate metrics are very close, so focus on which output "
-                "best fits the use case."
-            )
+                insights.append("**Context Pressure**: Both candidates have similar estimated context pressure.")
 
     if setup_change_count(experiment_a, experiment_b) > 1:
         insights.append(
-            "This comparison changes multiple setup variables, so differences cannot "
-            "be attributed to one cause alone."
+            "**Experiment Design Note**: This comparison changes multiple setup variables simultaneously, "
+            "so differences in output cannot be attributed to a single parameter alone."
         )
 
     return insights
@@ -489,18 +519,20 @@ def build_decision_intelligence(
 
 def render_decision_intelligence(insights: list[str]) -> None:
     st.subheader("Decision Intelligence")
-    st.caption(
-        "Deterministic helper based on available outputs and approximate metrics; "
-        "not an LLM judge."
-    )
-    for insight in insights:
-        st.markdown(f"- {insight}")
+    with st.container(border=True):
+        st.caption(
+            "Deterministic estimation based on available outputs and approximate metrics; "
+            "not an exact LLM judge."
+        )
+        for insight in insights:
+            st.markdown(f"- {insight}")
 
 
 def render_run_summary(summary: list[str]) -> None:
     st.subheader("Run Summary")
-    for item in summary:
-        st.markdown(f"- {item}")
+    with st.container(border=True):
+        for item in summary:
+            st.markdown(f"- {item}")
 
 
 def resolve_model(preset_model: str, custom_model: str) -> str:
@@ -772,7 +804,7 @@ def build_experiment_panel(label: str, key_prefix: str, default_model_index: int
         param_cols = st.columns(2)
         with param_cols[0]:
             temperature_key = f"{key_prefix}_temperature"
-            max_temperature = 1.0 if provider == "Anthropic" else 2.0
+            max_temperature = get_max_temperature(provider)
             if st.session_state[temperature_key] > max_temperature:
                 st.session_state[temperature_key] = max_temperature
             temperature = st.slider(
@@ -782,9 +814,7 @@ def build_experiment_panel(label: str, key_prefix: str, default_model_index: int
                 step=0.1,
                 key=temperature_key,
             )
-            st.caption(
-                "Lower = more focused and repeatable. Higher = more creative and varied."
-            )
+            st.caption(get_temperature_guidance(provider))
         with param_cols[1]:
             max_output_tokens = st.slider(
                 "Max output tokens",
@@ -923,18 +953,19 @@ initialize_experiment_defaults("experiment_a", 0)
 initialize_experiment_defaults("experiment_b", 1)
 
 st.subheader("Comparison Presets")
+selected_preset = st.selectbox(
+    "Select a template to pre-fill the configuration",
+    list(COMPARISON_PRESETS.keys()),
+    key="comparison_preset",
+)
 with st.container(border=True):
-    preset_cols = st.columns([2, 4, 1])
+    preset_cols = st.columns([4, 1])
     with preset_cols[0]:
-        selected_preset = st.selectbox(
-            "Comparison preset",
-            list(COMPARISON_PRESETS.keys()),
-            key="comparison_preset",
-        )
+        st.markdown(f"**{selected_preset}**")
+        st.markdown(f"<span style='color: #555555;'>{COMPARISON_PRESETS[selected_preset]['description']}</span>", unsafe_allow_html=True)
     with preset_cols[1]:
-        st.caption(COMPARISON_PRESETS[selected_preset]["description"])
-    with preset_cols[2]:
-        if st.button("Apply preset"):
+        st.write("")
+        if st.button("Apply Preset", type="primary", use_container_width=True):
             apply_preset_to_session_state(selected_preset)
             st.session_state["last_applied_preset"] = selected_preset
             st.success(f"Applied preset: {selected_preset}")

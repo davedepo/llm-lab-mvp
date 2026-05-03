@@ -66,10 +66,10 @@ def estimate_openai_cost_usd(
     model: str,
     input_tokens: int,
     output_tokens: int,
-) -> float | None:
+) -> float:
     pricing = OPENAI_PRICING_USD_PER_1M_TOKENS.get(model)
     if pricing is None:
-        return None
+        pricing = {"input": 0.15, "output": 0.60}  # Fallback to gpt-4o-mini rates
 
     input_cost = (input_tokens / 1_000_000) * pricing["input"]
     output_cost = (output_tokens / 1_000_000) * pricing["output"]
@@ -80,10 +80,10 @@ def estimate_anthropic_cost_usd(
     model: str,
     input_tokens: int,
     output_tokens: int,
-) -> float | None:
+) -> float:
     pricing = ANTHROPIC_PRICING_USD_PER_1M_TOKENS.get(model)
     if pricing is None:
-        return None
+        pricing = {"input": 3.00, "output": 15.00}  # Fallback to claude-3-5-sonnet-latest rates
 
     input_cost = (input_tokens / 1_000_000) * pricing["input"]
     output_cost = (output_tokens / 1_000_000) * pricing["output"]
@@ -93,10 +93,10 @@ def estimate_anthropic_cost_usd(
 def estimate_context_pressure(
     total_tokens: int,
     model_name: str,
-) -> float | None:
+) -> float:
     context_window = MODEL_CONTEXT_WINDOWS.get(model_name)
     if context_window is None or context_window <= 0:
-        return None
+        context_window = 128_000  # Safe fallback window size
 
     safe_total_tokens = max(0, total_tokens)
     return (safe_total_tokens / context_window) * 100
