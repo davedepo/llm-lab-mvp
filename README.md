@@ -84,7 +84,6 @@ app/         → Streamlit MVP and provider wrappers
 docs/        → Static HTML simulator concept demo
 assets/      → High-resolution screenshots
 examples/    → Test configurations
-index.html   → Root static simulator entrypoint
 ```
 
 ---
