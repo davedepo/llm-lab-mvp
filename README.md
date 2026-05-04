@@ -41,7 +41,7 @@
 
 ### Application Interface Setup
 
-The interface preview below shows the top configuration section. The full page of web-app is captured in multiple high-resolution screenshots available in the [Screenprints](assets/screen-prints/) folder.
+The interface preview below shows the top configuration section. The full page of web-app is captured in multiple high-resolution screenshots available in the [screen-prints](assets/screen-prints/) folder.
 
 ![llm-lab preview](assets/screen-prints/screenprint-1.png)
 
