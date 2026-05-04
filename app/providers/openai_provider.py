@@ -1,3 +1,10 @@
+"""
+openai_provider.py
+
+Provides the integration with the OpenAI API. Handles request formatting,
+execution, text extraction, and metric estimations for GPT models, returning
+a standardized ProviderExperimentResult.
+"""
 import os
 from time import perf_counter
 
@@ -22,6 +29,21 @@ def run_openai_experiment(
     api_key: str | None = None,
     system_instruction: str | None = None,
 ) -> ProviderExperimentResult:
+    """
+    Executes an experiment using the OpenAI API.
+
+    Args:
+        prompt (str): The user prompt to evaluate.
+        model (str): The OpenAI model ID.
+        temperature (float): The generation temperature.
+        max_output_tokens (int): The upper limit on generated tokens.
+        api_key (str | None): Optional API key; falls back to the environment variable.
+        system_instruction (str | None): Optional system instructions.
+
+    Returns:
+        ProviderExperimentResult: The standardized execution metrics and output.
+    """
+    # Resolve API key from parameter or environment
     resolved_api_key = api_key or os.getenv("OPENAI_API_KEY")
     if not resolved_api_key:
         raise RuntimeError(
@@ -29,6 +51,7 @@ def run_openai_experiment(
             "or add it to your .env file."
         )
 
+    # Initialize client and build the request payload
     client = OpenAI(api_key=resolved_api_key)
     request_args = {
         "model": model,
@@ -39,6 +62,7 @@ def run_openai_experiment(
     if system_instruction and system_instruction.strip():
         request_args["instructions"] = system_instruction.strip()
 
+    # Execute the API call and measure latency
     try:
         start_time = perf_counter()
         response = client.responses.create(**request_args)
@@ -46,11 +70,13 @@ def run_openai_experiment(
     except Exception as e:
         raise RuntimeError(f"OpenAI API call failed: {e}") from e
 
+    # Parse the response payload for the generated text
     output_text = getattr(response, "output_text", None)
     if not output_text:
         raise RuntimeError("OpenAI returned a response without output text.")
 
     try:
+        # Estimate tokens using the heuristic text length approach
         input_text = "\n".join(
             value for value in [system_instruction, prompt] if value and value.strip()
         )
@@ -63,6 +89,7 @@ def run_openai_experiment(
         approximate_total_tokens = 0
 
     try:
+        # Calculate how much of the context window was utilized
         approximate_context_pressure_percent = estimate_context_pressure(
             total_tokens=approximate_total_tokens,
             model_name=model,
@@ -71,6 +98,7 @@ def run_openai_experiment(
         approximate_context_pressure_percent = None
 
     try:
+        # Calculate the estimated cost using static provider pricing
         approximate_cost_usd = estimate_openai_cost_usd(
             model=model,
             input_tokens=approximate_input_tokens,

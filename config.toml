@@ -1,2 +1,8 @@
+# config.toml
+#
+# Streamlit configuration file.
+# This file is used to define global settings for the application.
+
 [theme]
+# Primary accent color for interactive UI elements (e.g., buttons, active tabs)
 primaryColor = "#0066cc"

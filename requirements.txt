@@ -1,4 +1,9 @@
+# UI Framework
 streamlit
-openai
+
+# Provider Integrations
 anthropic
+openai
+
+# Environment Management
 python-dotenv

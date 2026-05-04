@@ -1,3 +1,10 @@
+"""
+streamlit_app.py
+
+The main entry point for the LLM Lab MVP Streamlit application.
+Handles the UI layout, state management, provider execution orchestration,
+and report generation.
+"""
 from datetime import datetime, timezone
 
 from dotenv import load_dotenv
@@ -199,22 +206,27 @@ MATERIAL_RATIO_DIFF = 0.2
 
 
 def format_cost(value: float | None) -> str:
+    """Formats the estimated cost into a currency string or an unavailable message."""
     return f"${value:.6f}" if value is not None else "Metrics Unavailable for this Run: Pricing Data Not Found or API Error"
 
 
 def format_context_pressure(value: float | None) -> str:
+    """Formats the estimated context pressure percentage into a string."""
     return f"{value:.2f}%" if value is not None else "Metrics Unavailable for this Run: Context Window Data Not Found or API Error"
 
 
 def model_options(provider: str) -> list[str]:
+    """Retrieves preset models for a provider, appending the custom option."""
     return MODEL_PRESETS[provider] + [CUSTOM_MODEL_OPTION]
 
 
 def display_model(model: str) -> str:
+    """Formats the model name for display, providing a fallback if empty."""
     return model or "Custom Model Required"
 
 
 def status_label(experiment: dict, result, status_message: str) -> str:
+    """Determines the display status for an experiment run based on provider support and result."""
     if experiment["provider"] not in LIVE_PROVIDERS:
         return "Unsupported Provider Placeholder"
     if result is not None:
@@ -223,6 +235,7 @@ def status_label(experiment: dict, result, status_message: str) -> str:
 
 
 def candidate_metrics_rows(label: str, experiment: dict, result, status_message: str):
+    """Builds a structured dictionary of metrics for rendering in tables."""
     if result is None:
         return [
             {
@@ -260,6 +273,7 @@ def candidate_metrics_rows(label: str, experiment: dict, result, status_message:
 
 
 def render_output_card(label: str, experiment: dict, result, status_message: str) -> None:
+    """Renders a single output card displaying the model's response or status."""
     with st.container(border=True):
         st.markdown(
             f"**{label}: {experiment['provider']} / "
@@ -286,6 +300,7 @@ def render_model_outputs(
     status_a: str,
     status_b: str,
 ) -> None:
+    """Renders the side-by-side output cards for both candidates."""
     st.subheader("Model Output")
     output_cols = st.columns(2)
     with output_cols[0]:
@@ -302,6 +317,7 @@ def render_approximate_metrics(
     status_a: str,
     status_b: str,
 ) -> None:
+    """Renders the side-by-side approximate metrics panels for both candidates."""
     st.subheader("Approximate Metrics")
     st.caption(
         "Definitions: Response Time = elapsed provider call time | "
@@ -333,6 +349,7 @@ def render_approximate_metrics(
 
 
 def ratio_difference(value_a: float | int | None, value_b: float | int | None):
+    """Calculates the ratio difference between two numerical values."""
     if value_a is None or value_b is None:
         return None
 
@@ -341,18 +358,21 @@ def ratio_difference(value_a: float | int | None, value_b: float | int | None):
 
 
 def lower_candidate(value_a: float | None, value_b: float | None):
+    """Identifies which candidate has the lower metric value."""
     if value_a is None or value_b is None or value_a == value_b:
         return None
     return "Candidate A" if value_a < value_b else "Candidate B"
 
 
 def higher_candidate(value_a: float | int | None, value_b: float | int | None):
+    """Identifies which candidate has the higher metric value."""
     if value_a is None or value_b is None or value_a == value_b:
         return None
     return "Candidate A" if value_a > value_b else "Candidate B"
 
 
 def comparison_type_statement(experiment_a: dict, experiment_b: dict) -> str:
+    """Analyzes the configurations and returns a string describing what changed."""
     provider_differs = experiment_a["provider"] != experiment_b["provider"]
     model_differs = experiment_a["model"] != experiment_b["model"]
     system_differs = (
@@ -384,6 +404,7 @@ def comparison_type_statement(experiment_a: dict, experiment_b: dict) -> str:
 
 
 def setup_change_count(experiment_a: dict, experiment_b: dict) -> int:
+    """Counts the number of configuration variables that differ between the two experiments."""
     changed = 0
     changed += experiment_a["provider"] != experiment_b["provider"]
     changed += experiment_a["model"] != experiment_b["model"]
@@ -403,9 +424,14 @@ def build_decision_intelligence(
     result_a,
     result_b,
 ) -> list[str]:
+    """
+    Analyzes experiment results and configurations to generate qualitative insights
+    comparing cost, tokens, and structural differences.
+    """
     insights = []
     unsupported = unsupported_providers(experiment_a, experiment_b)
 
+    # Detect missing or blocking setup issues
     if unsupported:
         insights.append(
             "Decision intelligence is incomplete because "
@@ -432,6 +458,7 @@ def build_decision_intelligence(
         )
 
     if result_a is not None and result_b is not None:
+        # Compare metrics and calculate ratio differences if both runs are successful
         cheaper = lower_candidate(
             result_a.approximate_cost_usd,
             result_b.approximate_cost_usd,
@@ -498,6 +525,7 @@ def build_decision_intelligence(
 
 
 def render_decision_intelligence(insights: list[str]) -> None:
+    """Renders the decision intelligence insights into the Streamlit UI."""
     st.subheader("Decision Intelligence")
     with st.container(border=True):
         st.caption(
@@ -509,6 +537,7 @@ def render_decision_intelligence(insights: list[str]) -> None:
 
 
 def render_run_summary(summary: list[str]) -> None:
+    """Renders the execution run summary list into the Streamlit UI."""
     st.subheader("Run Summary")
     with st.container(border=True):
         for item in summary:
@@ -516,6 +545,7 @@ def render_run_summary(summary: list[str]) -> None:
 
 
 def resolve_model(preset_model: str, custom_model: str) -> str:
+    """Determines the active model ID based on preset and custom selections."""
     if custom_model.strip():
         return custom_model.strip()
     if preset_model == CUSTOM_MODEL_OPTION:
@@ -524,14 +554,17 @@ def resolve_model(preset_model: str, custom_model: str) -> str:
 
 
 def provided_label(value: str) -> str:
+    """Returns 'Provided' if a string is non-empty, otherwise 'Not Provided'."""
     return "Provided" if value.strip() else "Not Provided"
 
 
 def same_or_different(value_a, value_b) -> str:
+    """Returns 'Same' if two values are equal, otherwise 'Different'."""
     return "Same" if value_a == value_b else "Different"
 
 
 def apply_preset_to_session_state(preset_name: str) -> None:
+    """Updates the Streamlit session state with values from the selected preset."""
     preset = COMPARISON_PRESETS[preset_name]
     for side, key_prefix in [("a", "experiment_a"), ("b", "experiment_b")]:
         for preset_key, widget_key in EXPERIMENT_KEY_MAP.items():
@@ -539,6 +572,7 @@ def apply_preset_to_session_state(preset_name: str) -> None:
 
 
 def initialize_experiment_defaults(key_prefix: str, default_model_index: int) -> None:
+    """Initializes Streamlit session state defaults for a given candidate configuration."""
     st.session_state.setdefault(f"{key_prefix}_provider", "OpenAI")
     st.session_state.setdefault(
         f"{key_prefix}_preset_model",
@@ -555,10 +589,12 @@ def initialize_experiment_defaults(key_prefix: str, default_model_index: int) ->
 
 
 def markdown_block(value: str) -> str:
+    """Wraps text in markdown triple backticks for rendering."""
     return f"```\n{value.strip() if value else ''}\n```"
 
 
 def experiment_config_markdown(label: str, experiment: dict) -> str:
+    """Generates markdown text documenting a candidate's configuration."""
     return "\n".join(
         [
             f"### {label} Configuration",
@@ -581,6 +617,7 @@ def experiment_config_markdown(label: str, experiment: dict) -> str:
 
 
 def result_markdown(label: str, experiment: dict, result, status_message: str) -> str:
+    """Generates markdown text documenting a candidate's run status and output."""
     lines = [
         f"### {label} Output",
         "",
@@ -594,6 +631,7 @@ def result_markdown(label: str, experiment: dict, result, status_message: str) -
 
 
 def comparison_summary_markdown(experiment_a: dict, experiment_b: dict) -> str:
+    """Generates markdown text summarizing the differences between the configurations."""
     lines = [
         "## Comparison Setup Summary",
         "",
@@ -618,6 +656,7 @@ def approximate_metrics_markdown(
     status_a: str,
     status_b: str,
 ) -> str:
+    """Generates a markdown table displaying the approximate metrics for both candidates."""
     lines = [
         "## Approximate Metrics",
         "",
@@ -646,6 +685,7 @@ def approximate_metrics_markdown(
 
 
 def decision_intelligence_markdown(insights: list[str]) -> str:
+    """Generates markdown text for the decision intelligence insights."""
     lines = [
         "## Decision Intelligence",
         "",
@@ -665,6 +705,7 @@ def build_run_summary(
     status_a: str,
     status_b: str,
 ) -> list[str]:
+    """Builds a summary list detailing the run statuses and provider warnings."""
     unsupported = unsupported_providers(experiment_a, experiment_b)
     summary = [
         f"Candidate A: {status_label(experiment_a, result_a, status_a)}",
@@ -685,6 +726,7 @@ def build_run_summary(
 
 
 def run_summary_markdown(summary: list[str]) -> str:
+    """Generates markdown text for the run summary list."""
     return "\n".join(["## Run Summary", ""] + [f"- {item}" for item in summary])
 
 
@@ -699,6 +741,7 @@ def build_markdown_report(
     insights: list[str] | None = None,
     run_summary: list[str] | None = None,
 ) -> str:
+    """Compiles all sections into a complete downloadable markdown report."""
     timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
     insights = insights or build_decision_intelligence(
         experiment_a, experiment_b, result_a, result_b
@@ -738,6 +781,10 @@ def build_markdown_report(
 
 
 def build_experiment_panel(label: str, key_prefix: str, default_model_index: int) -> dict:
+    """
+    Renders the configuration UI panel for a single candidate, updating session state
+    and returning the collected configuration dictionary.
+    """
     with st.container(border=True):
         st.subheader(label)
         provider = st.selectbox("Provider", PROVIDERS, key=f"{key_prefix}_provider")
@@ -831,6 +878,7 @@ def build_experiment_panel(label: str, key_prefix: str, default_model_index: int
 
 
 def comparison_setup_rows(experiment_a: dict, experiment_b: dict):
+    """Builds the list of dictionaries for the comparison setup table."""
     return [
         {
             "Field": "Provider",
@@ -883,6 +931,7 @@ def comparison_setup_rows(experiment_a: dict, experiment_b: dict):
 
 
 def experiments_are_identical(experiment_a: dict, experiment_b: dict) -> bool:
+    """Checks if the two configurations are identical across compared fields."""
     compared_fields = [
         "provider",
         "model",
@@ -896,6 +945,7 @@ def experiments_are_identical(experiment_a: dict, experiment_b: dict) -> bool:
 
 
 def unsupported_providers(experiment_a: dict, experiment_b: dict) -> list[str]:
+    """Returns a list of candidate labels that are using an unsupported provider."""
     return [
         experiment["label"]
         for experiment in [experiment_a, experiment_b]
@@ -904,6 +954,7 @@ def unsupported_providers(experiment_a: dict, experiment_b: dict) -> list[str]:
 
 
 def missing_custom_model_experiments(experiment_a: dict, experiment_b: dict) -> list[str]:
+    """Returns a list of candidate labels that are missing a custom model ID when selected."""
     return [
         experiment["label"]
         for experiment in [experiment_a, experiment_b]
@@ -913,6 +964,7 @@ def missing_custom_model_experiments(experiment_a: dict, experiment_b: dict) -> 
 
 
 def run_provider_candidate(experiment: dict):
+    """Delegates the execution to the appropriate provider wrapper based on configuration."""
     provider = experiment["provider"]
     shared_args = {
         "prompt": experiment["prompt"],
@@ -929,6 +981,7 @@ def run_provider_candidate(experiment: dict):
     raise RuntimeError(f"{provider} integration is not implemented yet.")
 
 
+# --- Main Streamlit Application Flow ---
 st.title("LLM Lab MVP")
 st.markdown(
     "<div style='font-size: 1.15rem; color: #4a5568; margin-bottom: 0.5rem;'>"
@@ -942,9 +995,11 @@ st.caption(
     "generated from the current run. OpenAI and Anthropic are currently live."
 )
 
+# Initialize state defaults to ensure UI loads cleanly on first visit
 initialize_experiment_defaults("experiment_a", 0)
 initialize_experiment_defaults("experiment_b", 1)
 
+# Render comparison preset selector
 st.subheader("Comparison Presets")
 selected_preset = st.selectbox(
     "Select a template to pre-fill the configuration",
@@ -963,6 +1018,7 @@ with st.container(border=True):
             st.session_state["last_applied_preset"] = selected_preset
             st.success(f"Applied preset: {selected_preset}")
 
+# Render user input forms for both configurations side-by-side
 st.subheader("User Input")
 setup_cols = st.columns(2)
 with setup_cols[0]:
@@ -970,10 +1026,12 @@ with setup_cols[0]:
 with setup_cols[1]:
     experiment_b = build_experiment_panel("Configuration B", "experiment_b", 1)
 
+# Render summary table of the setup
 st.subheader("Comparison Setup Summary")
 st.caption(comparison_type_statement(experiment_a, experiment_b))
 st.table(comparison_setup_rows(experiment_a, experiment_b))
 
+# Action controls
 action_cols = st.columns([2, 2, 8])
 with action_cols[0]:
     run_pressed = st.button("Run Evaluation", type="primary", use_container_width=True)
@@ -982,6 +1040,7 @@ with action_cols[1]:
         st.session_state.clear()
         st.rerun()
 
+# Main execution block when the user clicks 'Run Evaluation'
 if run_pressed:
     result_a = None
     result_b = None
