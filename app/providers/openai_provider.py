@@ -53,25 +53,33 @@ def run_openai_experiment(
 
     # Initialize client and build the request payload
     client = OpenAI(api_key=resolved_api_key)
+    
+    messages = []
+    if system_instruction and system_instruction.strip():
+        messages.append({"role": "system", "content": system_instruction.strip()})
+    messages.append({"role": "user", "content": prompt})
+    
     request_args = {
         "model": model,
-        "input": prompt,
+        "messages": messages,
         "temperature": temperature,
-        "max_output_tokens": max_output_tokens,
+        "max_tokens": max_output_tokens,
     }
-    if system_instruction and system_instruction.strip():
-        request_args["instructions"] = system_instruction.strip()
 
     # Execute the API call and measure latency
     try:
         start_time = perf_counter()
-        response = client.responses.create(**request_args)
+        response = client.chat.completions.create(**request_args)
         latency_seconds = perf_counter() - start_time
     except Exception as e:
         raise RuntimeError(f"OpenAI API call failed: {e}") from e
 
     # Parse the response payload for the generated text
-    output_text = getattr(response, "output_text", None)
+    try:
+        output_text = response.choices[0].message.content
+    except (AttributeError, IndexError):
+        output_text = None
+        
     if not output_text:
         raise RuntimeError("OpenAI returned a response without output text.")
 
